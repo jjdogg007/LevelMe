@@ -3,9 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { SystemLayout } from './SystemLayout';
 import { STARTING_CLASSES } from '../constants';
 import { PlayerStats } from '../types';
+import { playSystemSound } from '../services/audioService';
 
 interface AuthScreenProps {
   onLogin: (name: string, stats?: Partial<PlayerStats>) => void;
+  storedName?: string;
 }
 
 type AuthState = 
@@ -30,9 +32,10 @@ const GOAL_OPTIONS = ["Build Muscle", "Lose Fat", "Maintain Physique", "Increase
 const ACTIVITY_OPTIONS = ["Sedentary", "Lightly Active", "Moderate", "Very Active", "Extra Active"];
 const MOTIVATION_OPTIONS = ["Discipline", "Health", "Aesthetics", "Strength", "Competition", "Mental Clarity"];
 
-export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
+export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin, storedName }) => {
   const [authState, setAuthState] = useState<AuthState>('BOOT');
   const [name, setName] = useState('');
+  const [loginError, setLoginError] = useState(false);
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   
   // Profile Data
@@ -96,9 +99,28 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
     }, 3000);
   };
 
-  const handleLogin = () => {
+  const handleResumeClick = () => {
+      playSystemSound('click');
+      if (!storedName) {
+          playSystemSound('glitch');
+          alert("No System Data Found on this Device.");
+          return;
+      }
+      setAuthState('LOGIN');
+  };
+
+  const handleLoginSubmit = () => {
       if(!name) return;
-      onLogin(name);
+      
+      // Match Check
+      if (name.trim().toLowerCase() === storedName?.trim().toLowerCase()) {
+          playSystemSound('success');
+          onLogin(storedName);
+      } else {
+          playSystemSound('glitch');
+          setLoginError(true);
+          setTimeout(() => setLoginError(false), 2000);
+      }
   };
 
   const handleFrequencyNext = () => {
@@ -302,7 +324,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
                 {authState === 'MENU' && (
                     <div className="flex flex-col justify-center h-full space-y-4 animate-in fade-in duration-500 p-4">
                         <button 
-                            onClick={() => setAuthState('LOGIN')}
+                            onClick={handleResumeClick}
                             className="w-full py-4 border border-blue-500/50 bg-blue-900/10 hover:bg-blue-900/30 text-white font-bold tracking-widest uppercase transition-all flex items-center justify-center space-x-2 group"
                         >
                             <span className="group-hover:text-blue-400 transition-colors">Resume System</span>
@@ -321,20 +343,26 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
                     <div className="flex flex-col justify-center h-full space-y-6 animate-in slide-in-from-right-10 duration-300 p-4">
                         <div className="text-center">
                             <h2 className="text-blue-400 font-bold uppercase tracking-widest mb-4">Identity Verification</h2>
+                            <p className="text-gray-500 text-[10px] uppercase tracking-wider mb-6">Enter subject name to unlock</p>
                         </div>
                         <div>
-                             <label className="block text-xs text-gray-500 uppercase mb-2">Player Name</label>
                              <input 
                                 type="text" 
                                 value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="w-full bg-black border border-blue-500 text-white px-4 py-3 text-center font-bold tracking-widest focus:outline-none focus:shadow-[0_0_15px_rgba(37,99,235,0.5)] transition-shadow"
-                                placeholder="ENTER NAME"
-                             />
+                                onChange={(e) => { setName(e.target.value); setLoginError(false); }}
+                                className={`w-full bg-black border text-white px-4 py-3 text-center font-bold tracking-widest focus:outline-none transition-all
+                                    ${loginError ? 'border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.5)]' : 'border-blue-500 focus:shadow-[0_0_15px_rgba(37,99,235,0.5)]'}
+                                `}
+                                placeholder="PLAYER NAME"
+                                onKeyDown={(e) => e.key === 'Enter' && handleLoginSubmit()}
+                            />
+                            {loginError && (
+                                <p className="text-red-500 text-center text-xs font-mono mt-2 animate-pulse">ACCESS DENIED: IDENTITY MISMATCH</p>
+                            )}
                         </div>
                         <div className="flex space-x-2 pt-4">
-                            <button onClick={() => setAuthState('MENU')} className="flex-1 py-3 border border-gray-700 text-gray-500 hover:text-white uppercase text-xs font-bold">Back</button>
-                            <button onClick={handleLogin} className="flex-[2] py-3 bg-blue-600 hover:bg-blue-500 text-black uppercase text-xs font-bold tracking-widest shadow-[0_0_10px_rgba(37,99,235,0.5)]">Connect</button>
+                            <button onClick={() => { setAuthState('MENU'); setLoginError(false); setName(''); }} className="flex-1 py-3 border border-gray-700 text-gray-500 hover:text-white uppercase text-xs font-bold">Back</button>
+                            <button onClick={handleLoginSubmit} className="flex-[2] py-3 bg-blue-600 hover:bg-blue-500 text-black uppercase text-xs font-bold tracking-widest shadow-[0_0_10px_rgba(37,99,235,0.5)]">Verify</button>
                         </div>
                     </div>
                 )}
@@ -678,28 +706,25 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin }) => {
                             </p>
                             
                             <div className="flex flex-wrap justify-center gap-3 max-w-xs">
-                                {DAYS_OF_WEEK.map((day) => {
-                                    const isSelected = selectedDays.includes(day);
-                                    return (
-                                        <button
-                                            key={day}
-                                            onClick={() => {
-                                                if (isSelected) {
-                                                    setSelectedDays(selectedDays.filter(d => d !== day));
-                                                } else {
-                                                    setSelectedDays([...selectedDays, day]);
-                                                }
-                                            }}
-                                            className={`w-14 h-14 rounded-lg flex items-center justify-center font-bold text-sm transition-all duration-200 border-2
-                                                ${isSelected 
-                                                    ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] transform scale-110' 
-                                                    : 'bg-gray-900 border-gray-800 text-gray-600 hover:border-gray-600'}
-                                            `}
-                                        >
-                                            {day}
-                                        </button>
-                                    );
-                                })}
+                                {DAYS_OF_WEEK.map((day) => (
+                                    <button
+                                        key={day}
+                                        onClick={() => {
+                                            if (selectedDays.includes(day)) {
+                                                setSelectedDays(selectedDays.filter(d => d !== day));
+                                            } else {
+                                                setSelectedDays([...selectedDays, day]);
+                                            }
+                                        }}
+                                        className={`w-14 h-14 rounded-lg flex items-center justify-center font-bold text-sm transition-all duration-200 border-2
+                                            ${selectedDays.includes(day) 
+                                                ? 'bg-blue-600 border-blue-400 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)] transform scale-110' 
+                                                : 'bg-gray-900 border-gray-800 text-gray-600 hover:border-gray-600'}
+                                        `}
+                                    >
+                                        {day}
+                                    </button>
+                                ))}
                             </div>
 
                             <div className="mt-8 text-center">

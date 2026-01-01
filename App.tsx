@@ -343,7 +343,6 @@ const App: React.FC = () => {
                 }));
                 // Lock Navigation implicitly by setting isQuestStarted to false but quest type to emergency
                 setIsQuestStarted(true); 
-                speakSystemMessage("Emergency. Dungeon Break Detected.");
                 setNotificationMsg("SYSTEM ALERT: SURVIVE THE BREAK");
                 setShowNotification(true);
             } 
@@ -377,8 +376,7 @@ const App: React.FC = () => {
                 streakShield: shieldUsed ? false : parsedStats.streakShield, 
                 lastLoginDate: new Date().toISOString()
             });
-            setIsLoggedIn(true);
-            speakSystemMessage(`Welcome back, ${savedName || 'Player'}.`);
+            // Removed Auto Login here to support AuthScreen verification
         };
         checkPenalty();
     }
@@ -483,10 +481,10 @@ const App: React.FC = () => {
   }, []);
 
   const handleAuthLogin = (name: string, startingStats?: Partial<PlayerStats>) => {
-      setPlayerName(name);
-      const newHunterCode = `H-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
-      
       if (startingStats) {
+          // New Game Logic
+          const newHunterCode = `H-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+          setPlayerName(name);
           setStats(prev => ({
               ...prev,
               ...startingStats,
@@ -494,9 +492,8 @@ const App: React.FC = () => {
               hunterCode: newHunterCode,
               lastLoginDate: new Date().toISOString()
           }));
-      } else {
-          setStats(prev => ({ ...prev, hunterCode: newHunterCode }));
       }
+      // Resume Logic handles stats automatically via effect, just need to set logged in
       setIsLoggedIn(true);
       speakSystemMessage(`Welcome, ${name}.`);
   };
@@ -1003,7 +1000,7 @@ const App: React.FC = () => {
   };
 
   if (!isLoggedIn) {
-      return <AuthScreen onLogin={handleAuthLogin} />;
+      return <AuthScreen onLogin={handleAuthLogin} storedName={playerName} />;
   }
 
   if (victoryState) {
