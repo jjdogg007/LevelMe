@@ -247,6 +247,34 @@ export const STORY_CAMPAIGN: StoryChapter[] = [
         },
         rewards: { gold: 5000, xp: 1000, item: 'scale_armor' }
     },
+    // --- CAMEO: NARUTO (LEVEL 20) ---
+    {
+        id: 'cameo_naruto',
+        title: 'GLITCH: SEVENTH HOKAGE',
+        description: 'A golden chakra cloak envelops the gym.',
+        minLevel: 20,
+        lore: [
+            "ERROR: KURAMA MODE DETECTED.",
+            "The subject has infinite stamina.",
+            "He yells 'Believe it!' and sprints towards the tower.",
+            "Keep up with the Shadow Clones.",
+            "This is your Ninja Way now."
+        ],
+        quest: {
+            title: "WILL OF FIRE",
+            description: "Endurance cardio and explosive movements.",
+            timeLeft: "03:00:00",
+            difficulty: 'B',
+            status: 'active',
+            type: 'story',
+            tasks: [
+                { id: 'cn_1', name: 'BURPEES', target: 30, current: 0, unit: 'reps' },
+                { id: 'cn_2', name: 'SPRINTS', target: 400, current: 0, unit: 'm' },
+                { id: 'cn_3', name: 'MOUNTAIN CLIMBERS', target: 100, current: 0, unit: 'reps' }
+            ]
+        },
+        rewards: { gold: 7000, xp: 1500, item: 'headband_leaf' }
+    },
     {
         id: 'arc1_ch4',
         title: 'FILE 04: THE GATEKEEPER',
@@ -273,6 +301,34 @@ export const STORY_CAMPAIGN: StoryChapter[] = [
         },
         rewards: { gold: 10000, xp: 3000, shadow: 'igris' }
     },
+    // --- CAMEO: LUFFY (LEVEL 30) ---
+    {
+        id: 'cameo_luffy',
+        title: 'GLITCH: SUN GOD',
+        description: 'You hear the Drums of Liberation.',
+        minLevel: 30,
+        lore: [
+            "ERROR: REALITY IS RUBBER.",
+            "A boy in a straw hat is laughing uncontrollably.",
+            "His heartbeat sounds like a drum engine.",
+            "He wants you to be the freest person in the gym.",
+            "Bounce. Jump. Fly."
+        ],
+        quest: {
+            title: "GEAR 5 INTERVAL",
+            description: "Plyometric freedom.",
+            timeLeft: "03:00:00",
+            difficulty: 'B',
+            status: 'active',
+            type: 'story',
+            tasks: [
+                { id: 'cl_1', name: 'BOX JUMPS', target: 40, current: 0, unit: 'reps' },
+                { id: 'cl_2', name: 'JUMP SQUATS', target: 60, current: 0, unit: 'reps' },
+                { id: 'cl_3', name: 'JUMPING JACKS', target: 200, current: 0, unit: 'reps' }
+            ]
+        },
+        rewards: { gold: 15000, xp: 4000, item: 'straw_hat' }
+    },
     {
         id: 'arc2_ch5',
         title: 'FILE 05: OVERCLOCK',
@@ -297,6 +353,63 @@ export const STORY_CAMPAIGN: StoryChapter[] = [
             ]
         },
         rewards: { gold: 20000, xp: 5000, item: 'knights_breastplate' }
+    },
+    // --- CAMEO: YUSUKE (LEVEL 45) ---
+    {
+        id: 'cameo_yusuke',
+        title: 'GLITCH: MAZOKU',
+        description: 'Spirit energy levels are critical.',
+        minLevel: 45,
+        lore: [
+            "ERROR: DEMON ENERGY LEAK.",
+            "A delinquent in a green uniform is pointing his finger.",
+            "'Don't underestimate earthlings!'",
+            "Focus all your energy into a single point.",
+            "Core stability is the Spirit Gun."
+        ],
+        quest: {
+            title: "SPIRIT FOCUS",
+            description: "Advanced isometric holds.",
+            timeLeft: "02:00:00",
+            difficulty: 'A',
+            status: 'active',
+            type: 'story',
+            tasks: [
+                { id: 'cy_1', name: 'PLANK', target: 180, current: 0, unit: 'sec' },
+                { id: 'cy_2', name: 'LEG RAISES', target: 100, current: 0, unit: 'reps' },
+                { id: 'cy_3', name: 'RUSSIAN TWISTS', target: 100, current: 0, unit: 'reps' }
+            ]
+        },
+        rewards: { gold: 25000, xp: 6000, item: 'spirit_cuffs' }
+    },
+    // --- CAMEO: SAITAMA (LEVEL 50) ---
+    {
+        id: 'cameo_saitama',
+        title: 'GLITCH: THE STRONGEST',
+        description: 'A bald man in a cape is grocery shopping.',
+        minLevel: 50,
+        lore: [
+            "ERROR: LIMITER REMOVED.",
+            "He looks bored.",
+            "He just destroyed a meteor by accident.",
+            "He offers to teach you his secret training regimen.",
+            "Do not die."
+        ],
+        quest: {
+            title: "SERIOUS SERIES",
+            description: "The standard hero workout.",
+            timeLeft: "05:00:00",
+            difficulty: 'S',
+            status: 'active',
+            type: 'story',
+            tasks: [
+                { id: 'cs_1', name: 'PUSH-UPS', target: 100, current: 0, unit: 'reps' },
+                { id: 'cs_2', name: 'SIT-UPS', target: 100, current: 0, unit: 'reps' },
+                { id: 'cs_3', name: 'SQUATS', target: 100, current: 0, unit: 'reps' },
+                { id: 'cs_4', name: 'RUNNING', target: 10, current: 0, unit: 'km' }
+            ]
+        },
+        rewards: { gold: 50000, xp: 10000, item: 'hero_glove' }
     },
     {
         id: 'arc2_ch6',
@@ -698,5 +811,10 @@ export const SHOP_ITEMS: Item[] = [
   // --- CAMEO ITEMS ---
   { id: 'cyborg_core', name: 'Cyborg Core', type: 'equipment', rarity: 'D', slot: 'accessory', cost: 0, description: "Energy source of a disciple. STR +2, INT +2.", icon: "⚙️", bonusStats: { strength: 2, intelligence: 2 } },
   { id: 'ankle_weights', name: 'Orange Warmers', type: 'equipment', rarity: 'C', slot: 'accessory', cost: 0, description: "Hidden weights. AGI +3.", icon: "🦵", bonusStats: { agility: 3 } },
-  { id: 'green_bandana', name: 'Moss Bandana', type: 'equipment', rarity: 'C', slot: 'accessory', cost: 0, description: "Worn by a lost swordsman. STR +3.", icon: "🧣", bonusStats: { strength: 3 } }
+  { id: 'green_bandana', name: 'Moss Bandana', type: 'equipment', rarity: 'C', slot: 'accessory', cost: 0, description: "Worn by a lost swordsman. STR +3.", icon: "🧣", bonusStats: { strength: 3 } },
+  // --- LEGENDARY CAMEO ITEMS ---
+  { id: 'headband_leaf', name: 'Ninja Headband', type: 'equipment', rarity: 'B', slot: 'accessory', cost: 0, description: "Worn by a hero who never gave up. VIT +5, MP +20.", icon: "🍃", bonusStats: { vitality: 5, mp: 20 } },
+  { id: 'straw_hat', name: 'Straw Hat', type: 'equipment', rarity: 'A', slot: 'accessory', cost: 0, description: "Symbol of a free era. AGI +10.", icon: "👒", bonusStats: { agility: 10 } },
+  { id: 'spirit_cuffs', name: 'Spirit Cuffs', type: 'equipment', rarity: 'A', slot: 'accessory', cost: 0, description: "Heavy restraints. Training with them doubles gains. STR +8.", icon: "🔗", bonusStats: { strength: 8 } },
+  { id: 'hero_glove', name: 'Red Glove', type: 'equipment', rarity: 'S', slot: 'weapon', cost: 0, description: "One punch is all it takes. STR +20.", icon: "🥊", bonusStats: { strength: 20 } },
 ];
