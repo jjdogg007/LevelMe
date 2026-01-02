@@ -1,6 +1,6 @@
 
 import { initializeApp, getApps, FirebaseApp } from 'firebase/app';
-import { getFirestore, Firestore } from 'firebase/firestore';
+import { getFirestore, Firestore, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { getAnalytics, Analytics } from "firebase/analytics";
 
 // Your web app's Firebase configuration
@@ -27,20 +27,58 @@ try {
         app = getApps()[0];
     }
     
-    // Initialize Firestore
-    db = getFirestore(app);
-    console.log("System: Database Uplink Established.");
+    // Try to Initialize Firestore
+    try {
+        db = getFirestore(app);
+        console.log("System: Database Uplink Established.");
+    } catch (dbError) {
+        console.warn("System: Database Uplink Failed. Switching to Local Storage Mode.");
+        db = null;
+    }
     
     // Initialize Analytics only in browser environment
     if (typeof window !== 'undefined') {
-        analytics = getAnalytics(app);
+        try {
+            analytics = getAnalytics(app);
+        } catch (e) {
+            // Analytics failures are non-critical
+        }
     }
 } catch (e) {
-    console.error("CRITICAL ERROR: Firebase Connection Failed.", e);
-    console.warn("Ensure Firestore is enabled in the Firebase Console and 'firebase' versions match in index.html");
+    console.warn("System: Firebase Unavailable. Running in Local Mode.");
 }
 
 export { db, analytics };
 
-// Helper to check if Firebase is configured
+// Helper to check if Firebase is configured and connected
 export const isFirebaseConfigured = () => !!db;
+
+// --- GLOBAL VISUALS (The Akashic Records) ---
+
+// Subscribe to global visual overrides
+export const subscribeToGlobalVisuals = (callback: (data: Record<string, string>) => void) => {
+  if (!db) return () => {};
+  
+  // Listening to collection 'system_overrides', document 'visuals'
+  const unsub = onSnapshot(doc(db, "system_overrides", "visuals"), (docSnap) => {
+    if (docSnap.exists()) {
+      callback(docSnap.data() as Record<string, string>);
+    } else {
+        // Create it if it doesn't exist so we have a place to write
+        setDoc(doc(db, "system_overrides", "visuals"), {}, { merge: true });
+    }
+  }, (error) => {
+      console.warn("Global Sync Interrupted:", error);
+  });
+  
+  return unsub;
+};
+
+// Save a visual override globally
+export const saveGlobalVisual = async (name: string, url: string) => {
+  if (!db) throw new Error("Database Offline");
+  
+  await setDoc(doc(db, "system_overrides", "visuals"), {
+    [name]: url
+  }, { merge: true });
+};

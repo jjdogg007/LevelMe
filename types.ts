@@ -1,4 +1,5 @@
 
+
 export type ItemType = 'consumable' | 'equipment';
 export type EquipmentSlot = 'weapon' | 'armor' | 'accessory';
 export type Rarity = 'E' | 'D' | 'C' | 'B' | 'A' | 'S';
@@ -61,6 +62,7 @@ export interface PlayerStats {
   weightHistory: { date: string; weight: number }[]; 
   gallery: { date: string, image: string }[]; 
   skillMastery: Record<string, SkillMastery>; // New: Skill Proficiency
+  customVisuals: Record<string, string>; // New: User Defined GIF URLs
   // Hidden Stats for Job Evolution
   hiddenStats: {
       strengthReps: number;
@@ -134,6 +136,7 @@ export interface QuestTask {
   current: number;
   unit: string;
   exerciseId?: string;
+  videoUrl?: string;
 }
 
 export interface WorkoutSet {

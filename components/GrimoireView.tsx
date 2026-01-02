@@ -6,6 +6,7 @@ import { Exercise, Shadow, SkillMastery, NutritionPlan, PlayerStats } from '../t
 import { SkillModal } from './SkillModal';
 import { playSystemSound } from '../services/audioService';
 import { generateNutritionPlan, analyzeFoodImage, generateSnackSuggestion } from '../services/geminiService';
+import { SystemVisualizer } from './SystemVisualizer';
 
 interface GrimoireViewProps {
     history?: string[];
@@ -16,10 +17,12 @@ interface GrimoireViewProps {
     onDispatch?: (shadowId: string, missionId: string) => void;
     onClaim?: (shadowId: string) => void;
     onAddPhoto?: (base64: string) => void;
-    playerStats?: PlayerStats; // Added for nutrition access
+    playerStats?: PlayerStats; 
+    onUpdateVisual?: (name: string, url: string) => void; // New Prop
+    globalVisuals?: Record<string, string>; // New Shared Prop
 }
 
-export const GrimoireView: React.FC<GrimoireViewProps> = ({ history = [], shadows = [], shadowStatus = {}, gallery = [], skillMastery = {}, onDispatch, onClaim, onAddPhoto, playerStats }) => {
+export const GrimoireView: React.FC<GrimoireViewProps> = ({ history = [], shadows = [], shadowStatus = {}, gallery = [], skillMastery = {}, onDispatch, onClaim, onAddPhoto, playerStats, onUpdateVisual, globalVisuals = {} }) => {
   const [activeTab, setActiveTab] = useState<'SKILLS' | 'HISTORY' | 'ARMY' | 'VESSEL' | 'INTAKE'>('SKILLS');
   const [filterType, setFilterType] = useState<string>('All');
   const [filterRank, setFilterRank] = useState<string>('All');
@@ -56,13 +59,13 @@ export const GrimoireView: React.FC<GrimoireViewProps> = ({ history = [], shadow
       return typeMatch && rankMatch;
   });
 
-  const getRankColor = (rank: string) => {
+  const getRankStyle = (rank: string) => {
       switch(rank) {
-          case 'S': return 'text-red-500 border-red-500 bg-red-900/20';
-          case 'A': return 'text-orange-500 border-orange-500 bg-orange-900/20';
-          case 'B': return 'text-purple-500 border-purple-500 bg-purple-900/20';
-          case 'C': return 'text-blue-400 border-blue-400 bg-blue-900/20';
-          default: return 'text-gray-400 border-gray-600 bg-gray-800/50';
+          case 'S': return { border: 'border-red-500', text: 'text-red-500', bg: 'bg-red-500', shadow: 'shadow-red-500/20' };
+          case 'A': return { border: 'border-yellow-500', text: 'text-yellow-500', bg: 'bg-yellow-500', shadow: 'shadow-yellow-500/20' };
+          case 'B': return { border: 'border-purple-500', text: 'text-purple-500', bg: 'bg-purple-500', shadow: 'shadow-purple-500/20' };
+          case 'C': return { border: 'border-blue-400', text: 'text-blue-400', bg: 'bg-blue-400', shadow: 'shadow-blue-400/20' };
+          default: return { border: 'border-gray-700', text: 'text-gray-400', bg: 'bg-gray-600', shadow: 'shadow-none' };
       }
   };
 
@@ -305,6 +308,9 @@ export const GrimoireView: React.FC<GrimoireViewProps> = ({ history = [], shadow
                     videoUrl: selectedExercise.videoUrl,
                     gifData: selectedExercise.gifData
                 }}
+                // Priority: Global Overrides > User Custom > Defaults
+                customVisual={globalVisuals[selectedExercise.name] || playerStats?.customVisuals?.[selectedExercise.name]}
+                onUpdateVisual={onUpdateVisual}
                 onClose={() => setSelectedExercise(null)}
             />
         )}
@@ -323,6 +329,7 @@ export const GrimoireView: React.FC<GrimoireViewProps> = ({ history = [], shadow
         {/* --- INTAKE (FORMERLY NUTRITION) --- */}
         {activeTab === 'INTAKE' && (
             <div className="flex-1 overflow-y-auto scrollbar-hide pb-20 space-y-4">
+                {/* ... (Existing Intake UI Code) ... */}
                 
                 {/* SCANNER */}
                 <div className="p-4 bg-gray-900/50 border border-green-900/50 rounded-sm">
@@ -447,69 +454,6 @@ export const GrimoireView: React.FC<GrimoireViewProps> = ({ history = [], shadow
             </div>
         )}
 
-        {activeTab === 'HISTORY' && (
-            <SystemLayout title="Extraction Record">
-                <div className="p-2">
-                    <div className="flex justify-between items-end mb-6">
-                        <div>
-                            <p className="text-gray-400 text-xs uppercase">Total Quests</p>
-                            <p className="text-3xl font-bold text-blue-400 font-mono">{history.length}</p>
-                        </div>
-                        <div className="text-right">
-                             <p className="text-gray-500 text-[10px] uppercase">Consistency Grade</p>
-                             <p className="text-white font-bold text-xl">
-                                 {history.length > 20 ? 'S' : history.length > 10 ? 'A' : history.length > 5 ? 'B' : 'E'}
-                             </p>
-                        </div>
-                    </div>
-                    {renderCalendar()}
-                </div>
-            </SystemLayout>
-        )}
-
-        {activeTab === 'ARMY' && (
-            <div className="flex-1 overflow-y-auto scrollbar-hide pb-20">
-                <div className="text-center mb-4">
-                    <p className="text-purple-400 text-xs uppercase tracking-widest">Shadow Extraction</p>
-                    <p className="text-gray-500 text-[10px]">
-                        Maintain streaks to awaken your soldiers.
-                    </p>
-                </div>
-                {renderArmy()}
-            </div>
-        )}
-
-        {activeTab === 'VESSEL' && (
-            <div className="flex-1 overflow-y-auto scrollbar-hide pb-20">
-                <div className="flex justify-between items-center mb-4">
-                    <p className="text-yellow-400 text-xs uppercase tracking-widest">Avatar Evolution</p>
-                    <button 
-                        onClick={() => fileInputRef.current?.click()}
-                        className="text-[10px] bg-yellow-600 text-black font-bold uppercase px-3 py-1 rounded"
-                    >
-                        + Update Form
-                    </button>
-                </div>
-                
-                {gallery.length === 0 ? (
-                    <div className="border border-dashed border-gray-700 p-8 text-center text-gray-500 text-xs">
-                        No form updates recorded. Upload a photo to track physical evolution.
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-2 gap-3">
-                        {gallery.map((entry, i) => (
-                            <div key={i} className="border border-gray-800 bg-gray-900/50 p-2">
-                                <div className="aspect-[3/4] overflow-hidden mb-2 bg-black">
-                                    <img src={entry.image} className="w-full h-full object-cover opacity-80 hover:opacity-100 transition-opacity" />
-                                </div>
-                                <p className="text-[10px] text-gray-400 font-mono text-center">{entry.date}</p>
-                            </div>
-                        ))}
-                    </div>
-                )}
-            </div>
-        )}
-
         {activeTab === 'SKILLS' && (
             <>
                 {/* Filters */}
@@ -542,58 +486,80 @@ export const GrimoireView: React.FC<GrimoireViewProps> = ({ history = [], shadow
                     </div>
                 </div>
 
-                {/* List */}
-                <div className="flex-1 overflow-y-auto scrollbar-hide space-y-3 pb-20">
-                    {filteredExercises.map(ex => {
-                        const mastery = skillMastery[ex.name] || { rank: 'E', xp: 0, totalReps: 0 };
-                        // Next Threshold
-                        const nextRank = mastery.rank === 'S' ? 'S' : (mastery.rank === 'E' ? 'D' : (mastery.rank === 'D' ? 'C' : (mastery.rank === 'C' ? 'B' : (mastery.rank === 'B' ? 'A' : 'S'))));
-                        // @ts-ignore
-                        const target = MASTERY_THRESHOLDS[nextRank];
-                        const progress = mastery.rank === 'S' ? 100 : Math.min(100, (mastery.xp / target) * 100);
+                {/* Skill Cards Grid */}
+                <div className="flex-1 overflow-y-auto scrollbar-hide pb-20 px-1">
+                    <div className="grid grid-cols-2 gap-3">
+                        {filteredExercises.map(ex => {
+                            const mastery = skillMastery[ex.name] || { rank: 'E', xp: 0, totalReps: 0 };
+                            // Next Threshold Calculation
+                            const nextRank = mastery.rank === 'S' ? 'S' : (mastery.rank === 'E' ? 'D' : (mastery.rank === 'D' ? 'C' : (mastery.rank === 'C' ? 'B' : (mastery.rank === 'B' ? 'A' : 'S'))));
+                            // @ts-ignore
+                            const target = MASTERY_THRESHOLDS[nextRank];
+                            const progress = mastery.rank === 'S' ? 100 : Math.min(100, (mastery.xp / target) * 100);
+                            
+                            const style = getRankStyle(mastery.rank);
+                            
+                            // Visual Priority: Global > Custom Local > Default Video > GIF Data > Fallback
+                            const customUrl = globalVisuals[ex.name] || playerStats?.customVisuals?.[ex.name];
 
-                        return (
-                            <div 
-                                key={ex.id}
-                                onClick={() => { playSystemSound('hover'); setSelectedExercise(ex); }}
-                                className="group relative bg-black/50 border border-gray-800 p-3 hover:border-blue-500/50 transition-colors cursor-pointer"
-                            >
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="flex items-center space-x-3">
-                                        <div className={`w-10 h-10 border flex items-center justify-center font-bold text-lg font-mono ${getRankColor(mastery.rank)}`}>
-                                            {mastery.rank}
+                            return (
+                                <div 
+                                    key={ex.id}
+                                    onClick={() => { playSystemSound('hover'); setSelectedExercise(ex); }}
+                                    className={`relative aspect-[3/4] bg-gray-900/80 border-2 rounded-lg overflow-hidden flex flex-col cursor-pointer transition-all active:scale-95 group ${style.border} ${style.shadow}`}
+                                >
+                                    {/* Rank Stamp */}
+                                    <div className={`absolute top-2 right-2 z-20 bg-black/90 border border-current px-2 py-0.5 rounded text-xs font-black font-mono ${style.text} ${style.border}`}>
+                                        {mastery.rank}
+                                    </div>
+
+                                    {/* Visual Preview Area */}
+                                    <div className="flex-1 bg-black relative overflow-hidden flex items-center justify-center">
+                                         {/* Prioritize Custom URL */}
+                                         {customUrl ? (
+                                             <img src={customUrl} className="w-full h-full object-cover opacity-80 grayscale group-hover:grayscale-0 transition-all duration-500" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+                                         ) : ex.gifData ? (
+                                             <img src={`data:image/gif;base64,${ex.gifData}`} className="w-full h-full object-cover opacity-50 grayscale group-hover:grayscale-0 transition-all duration-500" />
+                                         ) : ex.videoUrl ? (
+                                             <img src={ex.videoUrl} className="w-full h-full object-cover opacity-50 grayscale group-hover:grayscale-0 transition-all duration-500" />
+                                         ) : (
+                                             // Fallback to System Visualizer Component
+                                             <div className="w-full h-full relative">
+                                                 <SystemVisualizer type={ex.type} active={false} />
+                                                 {/* Static Overlay so it doesn't animate constantly in grid */}
+                                                 <div className="absolute inset-0 bg-transparent z-10"></div>
+                                             </div>
+                                         )}
+                                         
+                                         {/* Gradient Overlay */}
+                                         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-transparent pointer-events-none"></div>
+                                    </div>
+
+                                    {/* Card Info */}
+                                    <div className="p-3 relative z-10 bg-gradient-to-t from-black to-gray-900/80">
+                                        <h3 className="text-white font-bold text-xs uppercase leading-tight mb-1 line-clamp-1 group-hover:text-blue-400 transition-colors">
+                                            {ex.name}
+                                        </h3>
+                                        <div className="flex justify-between items-center text-[9px] text-gray-400 mb-2">
+                                            <span>{ex.type}</span>
+                                            <span>{ex.muscles[0]}</span>
                                         </div>
-                                        <div>
-                                            <div className="flex items-center space-x-2">
-                                                <h3 className="text-white font-bold uppercase text-sm group-hover:text-blue-400 transition-colors">{ex.name}</h3>
-                                                {ex.videoUrl && (
-                                                    <span className="text-[8px] bg-blue-900/30 text-blue-400 px-1 rounded border border-blue-500/20">
-                                                        ▶ MEDIA
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <p className="text-[10px] text-gray-500 uppercase">{ex.type} • {ex.muscles[0]}</p>
+                                        
+                                        {/* Mastery Progress */}
+                                        <div className="relative w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                            <div className={`h-full ${style.bg} transition-all duration-500`} style={{ width: `${progress}%` }}></div>
+                                        </div>
+                                        <div className="text-[8px] text-right text-gray-500 mt-1 font-mono">
+                                            {mastery.xp}/{target} XP
                                         </div>
                                     </div>
-                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd" /></svg>
-                                    </div>
                                 </div>
-                                
-                                {/* Mastery Bar */}
-                                <div className="w-full bg-gray-900 h-1 rounded-full overflow-hidden mt-2">
-                                    <div className={`h-full ${mastery.rank === 'S' ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${progress}%` }}></div>
-                                </div>
-                                <div className="flex justify-between text-[8px] text-gray-600 mt-1 uppercase font-mono">
-                                    <span>Proficiency</span>
-                                    <span>{mastery.xp} / {target} XP</span>
-                                </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
+                    </div>
 
                     {filteredExercises.length === 0 && (
-                        <div className="text-center py-10">
+                        <div className="text-center py-10 border border-dashed border-gray-800 rounded-lg">
                             <p className="text-gray-600 text-sm">No skills matching criteria.</p>
                         </div>
                     )}

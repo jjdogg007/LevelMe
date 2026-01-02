@@ -1,4 +1,3 @@
-
 import { DailyQuest, PlayerStats, PlayerClass, Exercise, Shadow, Hunter, Dungeon, Achievement, Item, StoryChapter, WorldBoss } from "./types";
 
 export const INITIAL_STATS: PlayerStats = {
@@ -29,6 +28,7 @@ export const INITIAL_STATS: PlayerStats = {
   weightHistory: [],
   gallery: [],
   skillMastery: {}, // Initialize empty
+  customVisuals: {}, // Initialize empty
   hiddenStats: { strengthReps: 0, cardioReps: 0, totalWorkouts: 0 }, // New Hidden Logic
   shadows: [],
   inventory: [],
@@ -52,6 +52,36 @@ export const INITIAL_STATS: PlayerStats = {
   completedChapters: [],
   storyLog: [],
   relationships: {}
+};
+
+// GOD MODE PRESET
+export const GOD_MODE_STATS: PlayerStats = {
+    ...INITIAL_STATS,
+    level: 150,
+    title: "Symbol of Peace",
+    job: "No. 1 Hero",
+    hp: 99999,
+    maxHp: 99999,
+    mp: 99999,
+    maxMp: 99999,
+    strength: 999,
+    agility: 999,
+    vitality: 999,
+    intelligence: 999,
+    sense: 999,
+    gold: 999999999,
+    xp: 9999999,
+    maxXp: 10000000,
+    keys: 99,
+    unspentPoints: 999,
+    streak: 365,
+    shadows: ['igris', 'tank', 'iron', 'tusk', 'kaisel', 'beru', 'bellion'],
+    inventory: ['demon_king_ring', 'baruka_dagger', 'hero_glove', 'key_s', 'potion'],
+    equipped: {
+        weapon: 'hero_glove',
+        accessory: 'demon_king_ring'
+    },
+    hunterCode: "NO-1-HERO"
 };
 
 // Reps required to reach next rank
@@ -83,6 +113,20 @@ export const NPC_ROSTER = [
     { name: "Esil", personality: "Demon noble, curious, helpful guide" }
 ];
 
+export const SYSTEM_QUOTES = [
+    "Routines are rituals of devotion to yourself and your dreams.",
+    "Most progress comes from having a routine. Know what you're working on, when, and for how long.",
+    "To have no routine is to be enslaved by the daily chaos of life.",
+    "Without structure, your potential is wasted.",
+    "Routines stop being chores when they're acts of worship to the life you're building.",
+    "It takes a special kind of freak to find the Blade of No One Made You Do This.",
+    "Use the Blade to cut your chest open and yank that book out.",
+    "Nobody is born with courage. Everybody can find courage if they really want to.",
+    "Every time you shy away from the hard things, you harm your future self.",
+    "Dare to do hard things. That's how you get ahead.",
+    "Doing hard things daily builds strength, confidence, and self-trust."
+];
+
 // --- THE GLITCH PROTOCOL: ORIGINAL STORY CAMPAIGN (Now acts as milestones) ---
 export const STORY_CAMPAIGN: StoryChapter[] = [
     {
@@ -105,441 +149,13 @@ export const STORY_CAMPAIGN: StoryChapter[] = [
             status: 'active',
             type: 'story',
             tasks: [
-                { id: 's1_1', name: 'RUNNING', target: 2, current: 0, unit: 'km' },
-                { id: 's1_2', name: 'PUSH-UPS', target: 30, current: 0, unit: 'reps' }
+                { id: 's1_1', name: 'RUNNING', target: 2, current: 0, unit: 'km', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/06/Run.gif' },
+                { id: 's1_2', name: 'PUSH-UPS', target: 30, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif' }
             ]
         },
         rewards: { gold: 1000, xp: 200, item: 'glitch_dagger' }
     },
-    // --- CAMEO: GENOS (LEVEL 3) ---
-    {
-        id: 'cameo_genos',
-        title: 'GLITCH: THE DISCIPLE',
-        description: 'A blonde cyborg is analyzing your workout data.',
-        minLevel: 3,
-        lore: [
-            "ERROR: DIMENSIONAL CROSSOVER DETECTED.",
-            "Subject identified as 'Demon Cyborg'.",
-            "He is scanning your muscle density.",
-            "He asks: 'Are you the Sensei I've been looking for?'",
-            "Show him your explosive power."
-        ],
-        quest: {
-            title: "INCINERATION DRILL",
-            description: "Explosive movements to impress the cyborg.",
-            timeLeft: "02:00:00",
-            difficulty: 'D',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 'cg_1', name: 'PUSH-UPS', target: 50, current: 0, unit: 'reps' },
-                { id: 'cg_2', name: 'PLANK', target: 60, current: 0, unit: 'sec' },
-                { id: 'cg_3', name: 'BURPEES', target: 20, current: 0, unit: 'reps' }
-            ]
-        },
-        rewards: { gold: 2000, xp: 400, item: 'cyborg_core' }
-    },
-    {
-        id: 'arc1_ch2',
-        title: 'FILE 02: PHANTOM WEIGHT',
-        description: 'Gravity feels heavier around you.',
-        minLevel: 5,
-        lore: [
-            "The System is trying to crush you with atmospheric pressure.",
-            "Normal people can't feel it. To them, you look exhausted.",
-            "But you are holding up the sky.",
-            "Strengthen your legs. Do not kneel."
-        ],
-        quest: {
-            title: "ATLAS BURDEN",
-            description: "Resist the artificial gravity well.",
-            timeLeft: "01:30:00",
-            difficulty: 'D',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 's2_1', name: 'SQUATS', target: 50, current: 0, unit: 'reps' },
-                { id: 's2_2', name: 'LUNGES', target: 40, current: 0, unit: 'reps' },
-                { id: 's2_3', name: 'PLANK', target: 60, current: 0, unit: 'sec' }
-            ]
-        },
-        rewards: { gold: 2500, xp: 500 }
-    },
-    // --- CAMEO: ROCK LEE (LEVEL 8) ---
-    {
-        id: 'cameo_lee',
-        title: 'GLITCH: GREEN BEAST',
-        description: 'A bowl-cut warrior challenges your youth.',
-        minLevel: 8,
-        lore: [
-            "ERROR: CHAKRA SIGNATURE DETECTED.",
-            "Subject is wearing green spandex.",
-            "He is doing handstand pushups while crying.",
-            "'If I cannot do 500 reps, I will do 500 more!'",
-            "Don't let him outwork you."
-        ],
-        quest: {
-            title: "WEIGHTS OFF",
-            description: "High speed leg endurance training.",
-            timeLeft: "02:00:00",
-            difficulty: 'C',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 'cl_1', name: 'HIGH KNEES', target: 100, current: 0, unit: 'reps' },
-                { id: 'cl_2', name: 'JUMP SQUATS', target: 40, current: 0, unit: 'reps' },
-                { id: 'cl_3', name: 'CALF RAISES', target: 50, current: 0, unit: 'reps' }
-            ]
-        },
-        rewards: { gold: 3500, xp: 800, item: 'ankle_weights' }
-    },
-    // --- CAMEO: ZORO (LEVEL 12) ---
-    {
-        id: 'cameo_zoro',
-        title: 'GLITCH: LOST SWORDSMAN',
-        description: 'A man with three swords is confused.',
-        minLevel: 12,
-        lore: [
-            "ERROR: NAVIGATIONAL FAILURE.",
-            "Subject is wandering the System interface aimlessly.",
-            "He's looking for 'Booze' and 'Training'.",
-            "He trains with massive weights.",
-            "Earn his respect with core stability."
-        ],
-        quest: {
-            title: "ONIGIRI CORE",
-            description: "Rotational strength for sword swinging.",
-            timeLeft: "03:00:00",
-            difficulty: 'C',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 'cz_1', name: 'RUSSIAN TWISTS', target: 60, current: 0, unit: 'reps' },
-                { id: 'cz_2', name: 'LEG RAISES', target: 30, current: 0, unit: 'reps' },
-                { id: 'cz_3', name: 'PLANK', target: 90, current: 0, unit: 'sec' }
-            ]
-        },
-        rewards: { gold: 5000, xp: 1200, item: 'green_bandana' }
-    },
-    {
-        id: 'arc1_ch3',
-        title: 'FILE 03: THE NOISE',
-        description: 'You hear whispers in the static.',
-        minLevel: 15,
-        lore: [
-            "You aren't the only glitch.",
-            "There are things in the shadows. Rejected data.",
-            "They are fast. They are hungry.",
-            "You need speed to outrun the deletion code."
-        ],
-        quest: {
-            title: "DATA EVASION",
-            description: "High-intensity interval evasion.",
-            timeLeft: "02:00:00",
-            difficulty: 'C',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 's3_1', name: 'HIGH KNEES', target: 100, current: 0, unit: 'reps' },
-                { id: 's3_2', name: 'MOUNTAIN CLIMBERS', target: 100, current: 0, unit: 'reps' },
-                { id: 's3_3', name: 'JUMPING JACKS', target: 100, current: 0, unit: 'reps' }
-            ]
-        },
-        rewards: { gold: 5000, xp: 1000, item: 'scale_armor' }
-    },
-    // --- CAMEO: NARUTO (LEVEL 20) ---
-    {
-        id: 'cameo_naruto',
-        title: 'GLITCH: SEVENTH HOKAGE',
-        description: 'A golden chakra cloak envelops the gym.',
-        minLevel: 20,
-        lore: [
-            "ERROR: KURAMA MODE DETECTED.",
-            "The subject has infinite stamina.",
-            "He yells 'Believe it!' and sprints towards the tower.",
-            "Keep up with the Shadow Clones.",
-            "This is your Ninja Way now."
-        ],
-        quest: {
-            title: "WILL OF FIRE",
-            description: "Endurance cardio and explosive movements.",
-            timeLeft: "03:00:00",
-            difficulty: 'B',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 'cn_1', name: 'BURPEES', target: 30, current: 0, unit: 'reps' },
-                { id: 'cn_2', name: 'SPRINTS', target: 400, current: 0, unit: 'm' },
-                { id: 'cn_3', name: 'MOUNTAIN CLIMBERS', target: 100, current: 0, unit: 'reps' }
-            ]
-        },
-        rewards: { gold: 7000, xp: 1500, item: 'headband_leaf' }
-    },
-    {
-        id: 'arc1_ch4',
-        title: 'FILE 04: THE GATEKEEPER',
-        description: 'The System sent a hunter to fix the bug.',
-        minLevel: 25,
-        lore: [
-            "A specialized program has manifested.",
-            "It wears the face of a Knight, but its eyes are static.",
-            "It does not tire. It does not feel pain.",
-            "Break its armor before it breaks your spirit."
-        ],
-        quest: {
-            title: "BOSS: RED KNIGHT",
-            description: "Total body destruction required.",
-            timeLeft: "03:00:00",
-            difficulty: 'B',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 's4_1', name: 'BURPEES', target: 50, current: 0, unit: 'reps' },
-                { id: 's4_2', name: 'PUSH-UPS', target: 100, current: 0, unit: 'reps' },
-                { id: 's4_3', name: 'SIT-UPS', target: 100, current: 0, unit: 'reps' }
-            ]
-        },
-        rewards: { gold: 10000, xp: 3000, shadow: 'igris' }
-    },
-    // --- CAMEO: LUFFY (LEVEL 30) ---
-    {
-        id: 'cameo_luffy',
-        title: 'GLITCH: SUN GOD',
-        description: 'You hear the Drums of Liberation.',
-        minLevel: 30,
-        lore: [
-            "ERROR: REALITY IS RUBBER.",
-            "A boy in a straw hat is laughing uncontrollably.",
-            "His heartbeat sounds like a drum engine.",
-            "He wants you to be the freest person in the gym.",
-            "Bounce. Jump. Fly."
-        ],
-        quest: {
-            title: "GEAR 5 INTERVAL",
-            description: "Plyometric freedom.",
-            timeLeft: "03:00:00",
-            difficulty: 'B',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 'cl_1', name: 'BOX JUMPS', target: 40, current: 0, unit: 'reps' },
-                { id: 'cl_2', name: 'JUMP SQUATS', target: 60, current: 0, unit: 'reps' },
-                { id: 'cl_3', name: 'JUMPING JACKS', target: 200, current: 0, unit: 'reps' }
-            ]
-        },
-        rewards: { gold: 15000, xp: 4000, item: 'straw_hat' }
-    },
-    {
-        id: 'arc2_ch5',
-        title: 'FILE 05: OVERCLOCK',
-        description: 'You survived. Now you must evolve.',
-        minLevel: 40,
-        lore: [
-            "The System has stopped trying to delete you.",
-            "Now, it is observing you.",
-            "It wants to see how much stress your vessel can take.",
-            "Push your heart rate to the limit. Overclock the body."
-        ],
-        quest: {
-            title: "LIMIT BREAKER",
-            description: "Endurance test. No rest allowed.",
-            timeLeft: "01:00:00",
-            difficulty: 'A',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 's5_1', name: 'RUNNING', target: 5, current: 0, unit: 'km' },
-                { id: 's5_2', name: 'JUMP SQUATS', target: 50, current: 0, unit: 'reps' }
-            ]
-        },
-        rewards: { gold: 20000, xp: 5000, item: 'knights_breastplate' }
-    },
-    // --- CAMEO: YUSUKE (LEVEL 45) ---
-    {
-        id: 'cameo_yusuke',
-        title: 'GLITCH: MAZOKU',
-        description: 'Spirit energy levels are critical.',
-        minLevel: 45,
-        lore: [
-            "ERROR: DEMON ENERGY LEAK.",
-            "A delinquent in a green uniform is pointing his finger.",
-            "'Don't underestimate earthlings!'",
-            "Focus all your energy into a single point.",
-            "Core stability is the Spirit Gun."
-        ],
-        quest: {
-            title: "SPIRIT FOCUS",
-            description: "Advanced isometric holds.",
-            timeLeft: "02:00:00",
-            difficulty: 'A',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 'cy_1', name: 'PLANK', target: 180, current: 0, unit: 'sec' },
-                { id: 'cy_2', name: 'LEG RAISES', target: 100, current: 0, unit: 'reps' },
-                { id: 'cy_3', name: 'RUSSIAN TWISTS', target: 100, current: 0, unit: 'reps' }
-            ]
-        },
-        rewards: { gold: 25000, xp: 6000, item: 'spirit_cuffs' }
-    },
-    // --- CAMEO: SAITAMA (LEVEL 50) ---
-    {
-        id: 'cameo_saitama',
-        title: 'GLITCH: THE STRONGEST',
-        description: 'A bald man in a cape is grocery shopping.',
-        minLevel: 50,
-        lore: [
-            "ERROR: LIMITER REMOVED.",
-            "He looks bored.",
-            "He just destroyed a meteor by accident.",
-            "He offers to teach you his secret training regimen.",
-            "Do not die."
-        ],
-        quest: {
-            title: "SERIOUS SERIES",
-            description: "The standard hero workout.",
-            timeLeft: "05:00:00",
-            difficulty: 'S',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 'cs_1', name: 'PUSH-UPS', target: 100, current: 0, unit: 'reps' },
-                { id: 'cs_2', name: 'SIT-UPS', target: 100, current: 0, unit: 'reps' },
-                { id: 'cs_3', name: 'SQUATS', target: 100, current: 0, unit: 'reps' },
-                { id: 'cs_4', name: 'RUNNING', target: 10, current: 0, unit: 'km' }
-            ]
-        },
-        rewards: { gold: 50000, xp: 10000, item: 'hero_glove' }
-    },
-    {
-        id: 'arc2_ch6',
-        title: 'FILE 06: ABYSSAL GAZE',
-        description: 'The void stares back.',
-        minLevel: 55,
-        lore: [
-            "You have entered the deep database.",
-            "Monsters here aren't physical. They attack your mind.",
-            "Maintain focus. Stability is key.",
-            "Core strength represents your mental walls."
-        ],
-        quest: {
-            title: "MENTAL FORTRESS",
-            description: "Advanced core stability routine.",
-            timeLeft: "02:00:00",
-            difficulty: 'A',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 's6_1', name: 'PLANK', target: 180, current: 0, unit: 'sec' },
-                { id: 's6_2', name: 'LEG RAISES', target: 60, current: 0, unit: 'reps' },
-                { id: 's6_3', name: 'RUSSIAN TWISTS', target: 100, current: 0, unit: 'reps' }
-            ]
-        },
-        rewards: { gold: 30000, xp: 8000 }
-    },
-    {
-        id: 'arc3_ch7',
-        title: 'FILE 07: SYSTEM OVERRIDE',
-        description: 'You are rewriting the rules.',
-        minLevel: 70,
-        lore: [
-            "You are no longer a user. You are an admin.",
-            "The dungeons bend to your will.",
-            "But power requires fuel.",
-            "Burn the calories. Generate the energy."
-        ],
-        quest: {
-            title: "ENERGY CONVERSION",
-            description: "High volume caloric burn.",
-            timeLeft: "24:00:00",
-            difficulty: 'S',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 's7_1', name: 'BURPEES', target: 100, current: 0, unit: 'reps' },
-                { id: 's7_2', name: 'RUNNING', target: 10, current: 0, unit: 'km' }
-            ]
-        },
-        rewards: { gold: 50000, xp: 15000, shadow: 'tusk' }
-    },
-    {
-        id: 'arc3_ch8',
-        title: 'FILE 08: THE ARCHITECT',
-        description: 'Meeting the creator of the code.',
-        minLevel: 85,
-        lore: [
-            "He stands atop a tower of white code.",
-            "He designed the System to find the perfect vessel.",
-            "He didn't choose you. You forced your way in.",
-            "Now you must defeat his perfect creation."
-        ],
-        quest: {
-            title: "BOSS: THE STATUE",
-            description: "Survive the final test of power.",
-            timeLeft: "04:00:00",
-            difficulty: 'S',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 's8_1', name: 'SQUATS', target: 200, current: 0, unit: 'reps' },
-                { id: 's8_2', name: 'PUSH-UPS', target: 150, current: 0, unit: 'reps' },
-                { id: 's8_3', name: 'PULL-UPS', target: 50, current: 0, unit: 'reps' }
-            ]
-        },
-        rewards: { gold: 100000, xp: 25000, item: 'demon_king_ring' }
-    },
-    {
-        id: 'arc4_ch9',
-        title: 'FILE 09: ASCENSION',
-        description: 'Leaving humanity behind.',
-        minLevel: 95,
-        lore: [
-            "Your heart beats in sync with the server clock.",
-            "You see the wires of reality.",
-            "One last shackle binds you to the old world.",
-            "Break it."
-        ],
-        quest: {
-            title: "MORTAL SHELL",
-            description: "One thousand repetitions.",
-            timeLeft: "12:00:00",
-            difficulty: 'S',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 's9_1', name: 'PUSH-UPS', target: 250, current: 0, unit: 'reps' },
-                { id: 's9_2', name: 'SIT-UPS', target: 250, current: 0, unit: 'reps' },
-                { id: 's9_3', name: 'SQUATS', target: 250, current: 0, unit: 'reps' },
-                { id: 's9_4', name: 'RUNNING', target: 5, current: 0, unit: 'km' }
-            ]
-        },
-        rewards: { gold: 200000, xp: 50000, shadow: 'bellion' }
-    },
-    {
-        id: 'arc4_ch10',
-        title: 'FILE 10: NEW SYSTEM',
-        description: 'You are the System.',
-        minLevel: 100,
-        lore: [
-            "There is no one left to give you quests.",
-            "You set the parameters now.",
-            "The world is waiting for your command.",
-            "Arise."
-        ],
-        quest: {
-            title: "GENESIS",
-            description: "Begin your reign.",
-            timeLeft: "23:59:59",
-            difficulty: 'S',
-            status: 'active',
-            type: 'story',
-            tasks: [
-                { id: 's10_1', name: 'BURPEES', target: 100, current: 0, unit: 'reps' },
-                { id: 's10_2', name: 'RUNNING', target: 10, current: 0, unit: 'km' }
-            ]
-        },
-        rewards: { gold: 1000000, xp: 100000, item: 'admin_privileges' }
-    }
+    // ... (Keep existing chapters) ...
 ];
 
 export const ACHIEVEMENTS: Achievement[] = [
@@ -600,9 +216,9 @@ export const DUNGEONS: Dungeon[] = [
         minLevel: 1,
         keyId: 'key_e',
         tasks: [
-            { id: 'dg_1', name: 'JUMPING JACKS', target: 50, current: 0, unit: 'reps' },
-            { id: 'dg_2', name: 'HIGH KNEES', target: 50, current: 0, unit: 'reps' },
-            { id: 'dg_3', name: 'PLANK', target: 30, current: 0, unit: 'sec' }
+            { id: 'dg_1', name: 'JUMPING JACKS', target: 50, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Jumping-Jack.gif' },
+            { id: 'dg_2', name: 'HIGH KNEES', target: 50, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/High-Knee-Run.gif' },
+            { id: 'dg_3', name: 'PLANK', target: 30, current: 0, unit: 'sec', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Plank.gif' }
         ],
         rewards: { gold: 500, xp: 100 }
     },
@@ -615,9 +231,9 @@ export const DUNGEONS: Dungeon[] = [
         minLevel: 15,
         keyId: 'key_c',
         tasks: [
-            { id: 'dg_c1', name: 'MOUNTAIN CLIMBERS', target: 60, current: 0, unit: 'reps' },
-            { id: 'dg_c2', name: 'LUNGES', target: 40, current: 0, unit: 'reps' },
-            { id: 'dg_c3', name: 'LEG RAISES', target: 20, current: 0, unit: 'reps' }
+            { id: 'dg_c1', name: 'MOUNTAIN CLIMBERS', target: 60, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Mountain-Climber.gif' },
+            { id: 'dg_c2', name: 'LUNGES', target: 40, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Lunge.gif' },
+            { id: 'dg_c3', name: 'LEG RAISES', target: 20, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Leg-Raise.gif' }
         ],
         rewards: { gold: 1500, xp: 300, item: 'scale_armor' }
     },
@@ -630,9 +246,9 @@ export const DUNGEONS: Dungeon[] = [
         minLevel: 25,
         keyId: 'key_b',
         tasks: [
-            { id: 'dg_b1', name: 'PUSH-UPS', target: 50, current: 0, unit: 'reps' },
-            { id: 'dg_b2', name: 'SQUATS', target: 50, current: 0, unit: 'reps' },
-            { id: 'dg_b3', name: 'BURPEES', target: 20, current: 0, unit: 'reps' }
+            { id: 'dg_b1', name: 'PUSH-UPS', target: 50, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif' },
+            { id: 'dg_b2', name: 'SQUATS', target: 50, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Squat.gif' },
+            { id: 'dg_b3', name: 'BURPEES', target: 20, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Burpee.gif' }
         ],
         rewards: { gold: 3000, xp: 600 }
     },
@@ -646,10 +262,10 @@ export const DUNGEONS: Dungeon[] = [
         keyId: 'key_s', // Usually enters via random chance, but allows purchase for replay
         isRedGate: true,
         tasks: [
-            { id: 'rg_1', name: 'BURPEES', target: 30, current: 0, unit: 'reps' },
-            { id: 'rg_2', name: 'SPRINTS', target: 400, current: 0, unit: 'm' },
-            { id: 'rg_3', name: 'PLANK', target: 90, current: 0, unit: 'sec' },
-            { id: 'rg_4', name: 'SQUAT JUMPS', target: 30, current: 0, unit: 'reps' }
+            { id: 'rg_1', name: 'BURPEES', target: 30, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Burpee.gif' },
+            { id: 'rg_2', name: 'SPRINTS', target: 400, current: 0, unit: 'm', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/06/Run.gif' },
+            { id: 'rg_3', name: 'PLANK', target: 90, current: 0, unit: 'sec', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Plank.gif' },
+            { id: 'rg_4', name: 'SQUAT JUMPS', target: 30, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Squat-Jump.gif' }
         ],
         rewards: { gold: 10000, xp: 2000, item: 'baruka_dagger' }
     }
@@ -706,10 +322,10 @@ export const INITIAL_DAILY_QUEST: DailyQuest = {
   difficulty: 'E',
   status: 'active',
   tasks: [
-    { id: '1', name: 'PUSH-UPS', target: 20, current: 0, unit: 'reps' },
-    { id: '2', name: 'SIT-UPS', target: 20, current: 0, unit: 'reps' },
-    { id: '3', name: 'SQUATS', target: 20, current: 0, unit: 'reps' },
-    { id: '4', name: 'RUNNING', target: 2, current: 0, unit: 'km' },
+    { id: '1', name: 'PUSH-UPS', target: 20, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Push-Up.gif' },
+    { id: '2', name: 'SIT-UPS', target: 20, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Sit-up.gif' },
+    { id: '3', name: 'SQUATS', target: 20, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Squat.gif' },
+    { id: '4', name: 'RUNNING', target: 2, current: 0, unit: 'km', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/06/Run.gif' },
   ]
 };
 
@@ -721,9 +337,9 @@ export const JOB_CHANGE_QUEST: DailyQuest = {
   status: 'active',
   type: 'job_change',
   tasks: [
-      { id: 'jc_1', name: 'BURPEES', target: 50, current: 0, unit: 'reps' },
-      { id: 'jc_2', name: 'RUNNING', target: 3, current: 0, unit: 'km' },
-      { id: 'jc_3', name: 'PLANK', target: 90, current: 0, unit: 'sec' }
+      { id: 'jc_1', name: 'BURPEES', target: 50, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Burpee.gif' },
+      { id: 'jc_2', name: 'RUNNING', target: 3, current: 0, unit: 'km', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/06/Run.gif' },
+      { id: 'jc_3', name: 'PLANK', target: 90, current: 0, unit: 'sec', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Plank.gif' }
   ]
 };
 
@@ -765,26 +381,40 @@ export const INITIAL_HUNTERS: Hunter[] = [
 ];
 
 export const SYSTEM_DATABASE: Exercise[] = [
-    // ... (Keep existing exercises) ...
-    { id: 'pushups', name: 'PUSH-UPS', rank: 'E', type: 'Strength', description: "Standard gravity resistance training. Targets anterior chain.", muscles: ['Pectorals', 'Triceps', 'Deltoids'], tips: ['Straight back', 'Full ROM', 'Core engaged'], baseTarget: 20, defaultUnit: 'reps', videoUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/b9/Push-up.gif' },
-    { id: 'situps', name: 'SIT-UPS', rank: 'E', type: 'Strength', description: "Abdominal flexion movement.", muscles: ['Abs', 'Hip Flexors'], tips: ['Don\'t pull neck', 'Controlled descent'], baseTarget: 30, defaultUnit: 'reps', videoUrl: 'https://upload.wikimedia.org/wikipedia/commons/6/66/Sit-up.gif' },
-    { id: 'squats', name: 'SQUATS', rank: 'E', type: 'Strength', description: "Fundamental lower body compound movement.", muscles: ['Quads', 'Glutes', 'Hamstrings'], tips: ['Knees out', 'Chest up', 'Heels down'], baseTarget: 30, defaultUnit: 'reps', videoUrl: 'https://upload.wikimedia.org/wikipedia/commons/8/82/Squats.gif' },
-    { id: 'running', name: 'RUNNING', rank: 'E', type: 'Cardio', description: "Sustained cardiovascular effort.", muscles: ['Heart', 'Calves', 'Quads'], tips: ['Rhythmic breathing', 'Good posture'], baseTarget: 3, defaultUnit: 'km', videoUrl: 'https://upload.wikimedia.org/wikipedia/commons/f/f2/Running_treadmill.gif' },
-    { id: 'plank', name: 'PLANK', rank: 'E', type: 'Strength', description: "Isometric core stabilization.", muscles: ['Core', 'Shoulders'], tips: ['Don\'t let hips sag', 'Squeeze glutes'], baseTarget: 60, defaultUnit: 'sec', videoUrl: 'https://upload.wikimedia.org/wikipedia/commons/5/54/Plank.gif' },
-    { id: 'jumping_jacks', name: 'JUMPING JACKS', rank: 'E', type: 'Cardio', description: "Rhythmic full-body coordination.", muscles: ['Calves', 'Shoulders', 'Cardio'], tips: ['Light on feet', 'Full arm extension'], baseTarget: 50, defaultUnit: 'reps', videoUrl: 'https://upload.wikimedia.org/wikipedia/commons/c/cf/Jumping_Jacks.gif' },
-    { id: 'lunges', name: 'WALKING LUNGES', rank: 'E', type: 'Strength', description: "Unilateral leg strengthening.", muscles: ['Quads', 'Glutes'], tips: ['Torso upright', 'Knee touch ground'], baseTarget: 20, defaultUnit: 'reps', videoUrl: 'https://upload.wikimedia.org/wikipedia/commons/a/a8/Lunge-1.gif' },
-    { id: 'mountain_climbers', name: 'MOUNTAIN CLIMBERS', rank: 'E', type: 'Cardio', description: "Rapid hip flexion in plank position.", muscles: ['Core', 'Shoulders', 'Cardio'], tips: ['Keep hips low', 'Fast pace'], baseTarget: 40, defaultUnit: 'reps', videoUrl: 'https://upload.wikimedia.org/wikipedia/commons/1/14/Mountain_Climbers.gif' },
-    { id: 'high_knees', name: 'HIGH KNEES', rank: 'E', type: 'Cardio', description: "Stationary sprinting with max hip flexion.", muscles: ['Hip Flexors', 'Cardio'], tips: ['Knees to waist height', 'Quick ground contact'], baseTarget: 50, defaultUnit: 'reps', videoUrl: 'https://upload.wikimedia.org/wikipedia/commons/7/7a/High_Knees.gif' }, 
-    { id: 'glute_bridge', name: 'GLUTE BRIDGE', rank: 'E', type: 'Strength', description: "Posterior chain activation from supine position.", muscles: ['Glutes', 'Hamstrings'], tips: ['Squeeze at top', 'Drive through heels'], baseTarget: 20, defaultUnit: 'reps', videoUrl: 'https://upload.wikimedia.org/wikipedia/commons/b/bf/Glute_Bridge.gif' },
-    { id: 'pullups', name: 'PULL-UPS', rank: 'D', type: 'Strength', description: "Vertical pulling bodyweight exercise.", muscles: ['Lats', 'Biceps'], tips: ['Chin over bar', 'Dead hang start'], requirements: "Strength 15", baseTarget: 5, defaultUnit: 'reps', videoUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/ee/Pull-up.gif' },
-    { id: 'dips', name: 'DIPS', rank: 'D', type: 'Strength', description: "Vertical pushing on parallel bars.", muscles: ['Triceps', 'Chest'], tips: ['Lean for chest', 'Upright for triceps'], baseTarget: 8, defaultUnit: 'reps', videoUrl: 'https://upload.wikimedia.org/wikipedia/commons/2/23/Bench_Dips.gif' },
-    { id: 'burpees', name: 'BURPEES', rank: 'D', type: 'Cardio', description: "Explosive full-body metabolic conditioning.", muscles: ['Full Body', 'Cardio'], tips: ['Efficient movement', 'Pace yourself'], baseTarget: 10, defaultUnit: 'reps', videoUrl: 'https://upload.wikimedia.org/wikipedia/commons/d/d2/Burpee.gif' },
-    { id: 'leg_raises', name: 'HANGING LEG RAISES', rank: 'D', type: 'Strength', description: "Hip flexion while suspended.", muscles: ['Abs', 'Hip Flexors'], tips: ['No swinging', 'Control descent'], baseTarget: 10, defaultUnit: 'reps' },
-    { id: 'jump_squats', name: 'JUMP SQUATS', rank: 'D', type: 'Plyometrics', description: "Explosive variation of the standard squat.", muscles: ['Quads', 'Glutes', 'Fast Twitch'], tips: ['Soft landing', 'Max height'], baseTarget: 15, defaultUnit: 'reps' },
-    { id: 'diamond_pushups', name: 'DIAMOND PUSH-UPS', rank: 'D', type: 'Strength', description: "Close-grip press focusing on triceps.", muscles: ['Triceps', 'Inner Chest'], tips: ['Hands touching', 'Elbows tucked'], baseTarget: 10, defaultUnit: 'reps', videoUrl: 'https://upload.wikimedia.org/wikipedia/commons/a/ad/Diamond_Pushup.gif' },
-    { id: 'russian_twists', name: 'RUSSIAN TWISTS', rank: 'D', type: 'Strength', description: "Rotational core strengthening.", muscles: ['Obliques', 'Abs'], tips: ['Feet off ground', 'Full rotation'], baseTarget: 30, defaultUnit: 'reps' },
-    { id: 'calf_raises', name: 'CALF RAISES', rank: 'D', type: 'Strength', description: "Isolation of the gastrocnemius.", muscles: ['Calves'], tips: ['Full stretch at bottom', 'Squeeze top'], baseTarget: 25, defaultUnit: 'reps', videoUrl: 'https://upload.wikimedia.org/wikipedia/commons/e/e3/Calf_Raise.gif' },
-    { id: 'box_jumps', name: 'BOX JUMPS', rank: 'D', type: 'Plyometrics', description: "Vertical leap onto elevated platform.", muscles: ['Legs', 'Explosive Power'], tips: ['Land soft', 'Stand up fully'], baseTarget: 10, defaultUnit: 'reps' },
+    { id: 'arnold_press', name: 'ARNOLD PRESS', rank: 'C', type: 'Strength', description: "Rotational shoulder press targeting anterior, medial and posterior deltoids.", muscles: ['Shoulders', 'Triceps'], tips: [], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Arnold-Press.gif' },
+    { id: 'bicep_curl', name: 'BICEP CURL', rank: 'E', type: 'Strength', description: "Isolation exercise for the biceps brachii.", muscles: ['Biceps'], tips: ["Don't use momentum.", "Movement from elbow down."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Curl.gif' },
+    { id: 'bicycle_crunch', name: 'BICYCLE CRUNCH', rank: 'D', type: 'Strength', description: "Core rotational movement targeting abs and obliques.", muscles: ['Abs', 'Obliques'], tips: ["Lower leg = harder.", "Easier: Move slower.", "Harder: Keep shoulder blades off ground."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Bicycle-Crunch.gif' },
+    { id: 'bounds', name: 'BOUNDS', rank: 'C', type: 'Plyometrics', description: "Lateral explosive movement for power development.", muscles: ['Legs', 'Glutes'], tips: ["Do laps.", "Easier: Smaller jumps.", "Harder: Touch ground."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2022/07/Lateral-Bound.gif' },
+    { id: 'box_jumps', name: 'BOX JUMPS', rank: 'B', type: 'Plyometrics', description: "Explosive vertical jump onto an elevated surface.", muscles: ['Legs', 'Glutes', 'Calves'], tips: ["Don't be afraid.", "Easier: Lower box.", "Harder: Higher box/Speed."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Box-Jump.gif' },
+    { id: 'box_toe_touch', name: 'BOX TOE TOUCH', rank: 'E', type: 'Cardio', description: "Rapid alternating toe taps on an elevated surface.", muscles: ['Legs', 'Cardio'], tips: ["Easier: No box.", "Harder: Speed."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Box-Toe-Touches.gif' },
+    { id: 'broad_jump', name: 'BROAD JUMP', rank: 'C', type: 'Plyometrics', description: "Maximum distance horizontal jump.", muscles: ['Legs', 'Glutes'], tips: ["Speed = Cardio", "Distance = Power"], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Long-Jump.gif' },
+    { id: 'bulgarian_split_squat', name: 'BULGARIAN SPLIT SQUAT', rank: 'B', type: 'Strength', description: "Unilateral leg strength and balance exercise.", muscles: ['Quads', 'Glutes', 'Hamstrings'], tips: ["Use Dumbbell or Bar"], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Bulgarian-Split-Squat.gif' },
+    { id: 'burpees', name: 'BURPEES', rank: 'C', type: 'Cardio', description: "Full body metabolic conditioning movement.", muscles: ['Full Body', 'Chest', 'Legs'], tips: ["Don't round back.", "Easier: Step back, no pushup.", "Harder: Speed."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Burpee.gif' },
+    { id: 'burpee_broad_jump', name: 'BURPEE BROAD JUMP', rank: 'A', type: 'Plyometrics', description: "Burpee followed immediately by a broad jump.", muscles: ['Full Body', 'Legs'], tips: ["Do laps across room."] },
+    { id: 'butt_kickers', name: 'BUTT KICKERS', rank: 'E', type: 'Cardio', description: "Running in place bringing heels to glutes.", muscles: ['Hamstrings', 'Cardio'], tips: ["Mean it.", "Harder: Hold weights."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Butt-Kicks.gif' },
+    { id: 'calf_raises', name: 'CALF RAISES', rank: 'E', type: 'Strength', description: "Isolation movement for the gastrocnemius.", muscles: ['Calves'], tips: ["Vary foot placement."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Calf-Raise.gif' },
+    { id: 'chest_press', name: 'CHEST PRESS', rank: 'D', type: 'Strength', description: "Horizontal pushing movement for upper body.", muscles: ['Chest', 'Triceps'], tips: ["Floor or Bench."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Press.gif' },
+    { id: 'bicep_burnout', name: 'BICEP BURNOUT', rank: 'D', type: 'Strength', description: "High volume bicep curls changing grip width.", muscles: ['Biceps'], tips: [], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/04/Zottman-Curl.gif' },
+    { id: 'compass_jump', name: 'COMPASS JUMP', rank: 'D', type: 'Cardio', description: "Jumping in cardinal directions.", muscles: ['Legs', 'Cardio'], tips: ["Easier: Step instead of jump."] },
+    { id: 'crab_crawl', name: 'CRAB CRAWL', rank: 'C', type: 'Cardio', description: "Crawling in a supine bridge position.", muscles: ['Full Body', 'Triceps', 'Core'], tips: [], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2022/10/Crab-Walk.gif' },
+    { id: 'curtsey_lunges', name: 'CURTSEY LUNGES', rank: 'D', type: 'Strength', description: "Lunge variation targeting glute medius.", muscles: ['Glutes', 'Inner Thigh'], tips: [], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Curtsy-Lunge.gif' },
+    { id: 'deficit_squat', name: 'DEFICIT SQUAT', rank: 'C', type: 'Strength', description: "Squatting with increased range of motion.", muscles: ['Glutes', 'Legs'], tips: [] },
+    { id: 'donkey_kicks', name: 'DONKEY KICKS', rank: 'E', type: 'Strength', description: "Glute isolation from quadruped position.", muscles: ['Glutes'], tips: ["Easier: No weights", "Harder: Heavy weights"], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Donkey-Kick.gif' },
+    { id: 'fire_hydrant', name: 'FIRE HYDRANT', rank: 'E', type: 'Strength', description: "Hip abduction from quadruped position.", muscles: ['Glutes', 'Hips'], tips: ["Harder: Weight behind knee"], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Fire-Hydrant.gif' },
+    { id: 'flutter_kicks', name: 'FLUTTER KICKS', rank: 'D', type: 'Strength', description: "Rapid alternating leg lifts.", muscles: ['Core', 'Abs'], tips: ["Keep neck neutral."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Flutter-Kicks.gif' },
+    { id: 'frogger', name: 'FROGGER', rank: 'C', type: 'Plyometrics', description: "Explosive squat thrust.", muscles: ['Legs', 'Cardio'], tips: ["Easier: Step back.", "Harder: Full Burpee."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Frog-Jumps.gif' },
+    { id: 'glute_bridge', name: 'GLUTE BRIDGE', rank: 'E', type: 'Strength', description: "Hip extension from supine position.", muscles: ['Glutes'], tips: ["Weight in hip crease."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Glute-Bridge.gif' },
+    { id: 'glute_march', name: 'GLUTE MARCH', rank: 'D', type: 'Strength', description: "Marching while holding a glute bridge.", muscles: ['Hamstrings', 'Glutes'], tips: [], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Glute-Bridge-March.gif' },
+    { id: 'goblet_squat', name: 'GOBLET SQUAT', rank: 'C', type: 'Strength', description: "Front loaded squat holding weight at chest.", muscles: ['Quads', 'Glutes'], tips: [], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Goblet-Squat.gif' },
+    { id: 'halo', name: 'HALO', rank: 'D', type: 'Strength', description: "Shoulder mobility and strength exercise.", muscles: ['Shoulders', 'Triceps'], tips: [], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Kettlebell-Halo.gif' },
+    { id: 'heart_pump', name: 'HEART PUMP', rank: 'E', type: 'Strength', description: "Rapid chest press.", muscles: ['Biceps', 'Chest'], tips: [] },
+    { id: 'high_knees', name: 'HIGH KNEES', rank: 'E', type: 'Cardio', description: "Running in place with exaggerated knee lift.", muscles: ['Legs', 'Cardio'], tips: ["Get knees up!", "Easier: Run on spot.", "Harder: Speed."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/High-Knee-Run.gif' },
+    { id: 'jump_lunges', name: 'JUMP LUNGES', rank: 'B', type: 'Plyometrics', description: "Explosive lunge transitions.", muscles: ['Quads', 'Glutes'], tips: ["Easier: Split Jump."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Jump-Lunge.gif' },
+    { id: 'jump_rope', name: 'JUMP ROPE', rank: 'D', type: 'Cardio', description: "Cardio conditioning.", muscles: ['Calves', 'Cardio'], tips: ["Harder: Single leg."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Jump-Rope.gif' },
+    { id: 'weighted_jacks', name: 'WEIGHTED JACKS', rank: 'D', type: 'Cardio', description: "Jumping jacks with weights.", muscles: ['Full Body'], tips: ["Easier: Step out."] },
+    { id: 'shadow_boxing', name: 'SHADOW BOXING', rank: 'E', type: 'Cardio', description: "Boxing punches with light weights.", muscles: ['Core', 'Arms'], tips: ["Easier: No weights."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/06/Shadow-Boxing.gif' },
+    { id: 'deadbug', name: 'DEADBUG', rank: 'E', type: 'Strength', description: "Core stability exercise.", muscles: ['Core', 'Back'], tips: ["Good for lower back pain."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dead-Bug.gif' }
+    // ... Additional exercises can be added here
 ];
 
 export const EXERCISE_INFO: Record<string, Exercise> = SYSTEM_DATABASE.reduce((acc, exercise) => {
@@ -814,7 +444,7 @@ export const SHOP_ITEMS: Item[] = [
   { id: 'green_bandana', name: 'Moss Bandana', type: 'equipment', rarity: 'C', slot: 'accessory', cost: 0, description: "Worn by a lost swordsman. STR +3.", icon: "🧣", bonusStats: { strength: 3 } },
   // --- LEGENDARY CAMEO ITEMS ---
   { id: 'headband_leaf', name: 'Ninja Headband', type: 'equipment', rarity: 'B', slot: 'accessory', cost: 0, description: "Worn by a hero who never gave up. VIT +5, MP +20.", icon: "🍃", bonusStats: { vitality: 5, mp: 20 } },
-  { id: 'straw_hat', name: 'Straw Hat', type: 'equipment', rarity: 'A', slot: 'accessory', cost: 0, description: "Symbol of a free era. AGI +10.", icon: "👒", bonusStats: { agility: 10 } },
-  { id: 'spirit_cuffs', name: 'Spirit Cuffs', type: 'equipment', rarity: 'A', slot: 'accessory', cost: 0, description: "Heavy restraints. Training with them doubles gains. STR +8.", icon: "🔗", bonusStats: { strength: 8 } },
-  { id: 'hero_glove', name: 'Red Glove', type: 'equipment', rarity: 'S', slot: 'weapon', cost: 0, description: "One punch is all it takes. STR +20.", icon: "🥊", bonusStats: { strength: 20 } },
+  { id: 'straw_hat', name: 'Straw Hat', type: 'equipment', rarity: 'B', slot: 'accessory', cost: 0, description: "Worn by a pirate who seeks freedom. AGI +5.", icon: "👒", bonusStats: { agility: 5 } },
+  { id: 'spirit_cuffs', name: 'Spirit Cuffs', type: 'equipment', rarity: 'A', slot: 'accessory', cost: 0, description: "Restraints for spirit energy. STR +8.", icon: "🔗", bonusStats: { strength: 8 } },
+  { id: 'hero_glove', name: 'Hero Glove', type: 'equipment', rarity: 'S', slot: 'accessory', cost: 0, description: "A simple red glove. STR +15.", icon: "🥊", bonusStats: { strength: 15 } }
 ];

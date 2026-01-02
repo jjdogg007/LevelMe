@@ -19,7 +19,7 @@ import { SystemTicker } from './components/SystemTicker';
 import { generatePersonalizedWorkout } from './services/geminiService';
 import { playSystemSound, speakSystemMessage, initAudio } from './services/audioService';
 import { fetchDailySteps } from './services/googleFitService';
-import { db, isFirebaseConfigured } from './services/firebase';
+import { db, isFirebaseConfigured, subscribeToGlobalVisuals, saveGlobalVisual } from './services/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const LevelUpParticles = () => {
@@ -81,6 +81,9 @@ const App: React.FC = () => {
   const [shadowStatus, setShadowStatus] = useState<Record<string, any>>({});
   const [bossState, setBossState] = useState(WORLD_BOSS);
   
+  // Global Visuals State (Shared across users)
+  const [globalVisuals, setGlobalVisuals] = useState<Record<string, string>>({});
+
   const [isQuestStarted, setIsQuestStarted] = useState(false);
   const [victoryState, setVictoryState] = useState<{ xp: number, gold: number, item?: string, shadow?: string, isLevelUp?: boolean, grade?: string } | null>(null);
 
@@ -95,8 +98,49 @@ const App: React.FC = () => {
   // Gate Scanning
   const [dailySteps, setDailySteps] = useState(0);
 
+  // PWA Prompt
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+
   // Debounce ref for saving
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Initialize Global Visuals Subscription
+  useEffect(() => {
+      const unsub = subscribeToGlobalVisuals((data) => {
+          setGlobalVisuals(data);
+      });
+      return () => unsub();
+  }, []);
+
+  // PWA Install Prompt Listener
+  useEffect(() => {
+    const handleBeforeInstallPrompt = (e: Event) => {
+      // Prevent the mini-infobar from appearing on mobile
+      e.preventDefault();
+      // Stash the event so it can be triggered later.
+      setDeferredPrompt(e);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    };
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    
+    // Show the install prompt
+    deferredPrompt.prompt();
+    
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log(`User response to the install prompt: ${outcome}`);
+    
+    // We've used the prompt, and can't use it again, throw it away
+    setDeferredPrompt(null);
+  };
 
   // Helper: Get Stats with Shadow Buffs included
   const getEffectiveStats = (baseStats: PlayerStats) => {
@@ -279,7 +323,8 @@ const App: React.FC = () => {
                       target: scaledTarget,
                       current: 0,
                       unit: ex.defaultUnit || 'reps',
-                      exerciseId: ex.id
+                      exerciseId: ex.id,
+                      videoUrl: ex.videoUrl
                   };
               })
           };
@@ -340,8 +385,8 @@ const App: React.FC = () => {
                   difficulty: "S",
                   type: "emergency",
                   tasks: [
-                      { id: 'e1', name: 'BURPEES', target: 20, current: 0, unit: 'reps' },
-                      { id: 'e2', name: 'MOUNTAIN CLIMBERS', target: 40, current: 0, unit: 'reps' }
+                      { id: 'e1', name: 'BURPEES', target: 20, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Burpee.gif' },
+                      { id: 'e2', name: 'MOUNTAIN CLIMBERS', target: 40, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Mountain-Climber.gif' }
                   ]
               }));
           }, 3000);
@@ -412,6 +457,7 @@ const App: React.FC = () => {
         // Backwards compatibility for new features
         if (!loadedStats.hunterCode) loadedStats.hunterCode = `H-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
         if (!loadedStats.skillMastery) loadedStats.skillMastery = {};
+        if (!loadedStats.customVisuals) loadedStats.customVisuals = {}; // Init
         if (!loadedStats.prestigeLevel) loadedStats.prestigeLevel = 0;
         if (!loadedStats.completedChapters) loadedStats.completedChapters = [];
         if (!loadedStats.hiddenStats) loadedStats.hiddenStats = { strengthReps: 0, cardioReps: 0, totalWorkouts: 0 };
@@ -443,9 +489,9 @@ const App: React.FC = () => {
                 status: 'active',
                 type: "emergency",
                 tasks: [
-                    { id: 'break_1', name: 'BURPEES', target: 30, current: 0, unit: 'reps' },
-                    { id: 'break_2', name: 'MOUNTAIN CLIMBERS', target: 50, current: 0, unit: 'reps' },
-                    { id: 'break_3', name: 'PLANK', target: 90, current: 0, unit: 'sec' }
+                    { id: 'break_1', name: 'BURPEES', target: 30, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Burpee.gif' },
+                    { id: 'break_2', name: 'MOUNTAIN CLIMBERS', target: 50, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Mountain-Climber.gif' },
+                    { id: 'break_3', name: 'PLANK', target: 90, current: 0, unit: 'sec', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Plank.gif' }
                 ]
             }));
             setIsQuestStarted(true); 
@@ -670,6 +716,29 @@ const App: React.FC = () => {
           // Default behavior for other consumables
           setStats(prev => ({ ...prev, inventory: newInventory }));
           alert(`${item.name} used.`);
+      }
+  };
+
+  const handleUpdateCustomVisual = async (name: string, url: string) => {
+      // Saves to the GLOBAL database so it persists across users (brothers)
+      try {
+          await saveGlobalVisual(name, url);
+          setNotificationMsg("Global System Override Applied.");
+          setShowNotification(true);
+          setTimeout(() => setShowNotification(false), 3000);
+      } catch (e) {
+          console.error("Failed to save global visual", e);
+          setNotificationMsg("Connection Failed. Saving Locally.");
+          setShowNotification(true);
+          
+          // Fallback to local save
+          setStats(prev => ({
+              ...prev,
+              customVisuals: {
+                  ...(prev.customVisuals || {}),
+                  [name]: url
+              }
+          }));
       }
   };
 
@@ -1114,7 +1183,19 @@ const App: React.FC = () => {
   const renderView = () => {
     switch (currentView) {
       case ViewState.STATUS:
-        return <StatusView stats={effectiveStats} playerName={playerName} onIncreaseStat={handleIncreaseStat} onUpdateProfile={handleUpdateProfile} onEquipItem={handleEquipItem} onUseItem={handleUseItem} onShareCard={() => setIsHunterCardOpen(true)} onPrestige={handlePrestige} />;
+        return <StatusView 
+            stats={effectiveStats} 
+            playerName={playerName} 
+            onIncreaseStat={handleIncreaseStat} 
+            onUpdateProfile={handleUpdateProfile} 
+            onEquipItem={handleEquipItem} 
+            onUseItem={handleUseItem} 
+            onShareCard={() => setIsHunterCardOpen(true)} 
+            onPrestige={handlePrestige}
+            // PWA Props
+            deferredPrompt={deferredPrompt}
+            onInstallApp={handleInstallApp}
+        />;
       case ViewState.QUESTS:
         return <QuestView 
             quest={dailyQuest} 
@@ -1132,7 +1213,24 @@ const App: React.FC = () => {
             dailySteps={dailySteps}
         />;
       case ViewState.GRIMOIRE:
-        return <GrimoireView history={stats.history} shadows={stats.shadows} shadowStatus={shadowStatus} gallery={stats.gallery} skillMastery={stats.skillMastery} onDispatch={handleDispatchShadow} onClaim={handleClaimShadow} onAddPhoto={handleAddPhoto} playerStats={effectiveStats} />;
+        return <GrimoireView 
+            history={stats.history} 
+            shadows={stats.shadows} 
+            shadowStatus={shadowStatus} 
+            gallery={stats.gallery} 
+            skillMastery={stats.skillMastery} 
+            onDispatch={handleDispatchShadow} 
+            onClaim={handleClaimShadow} 
+            onAddPhoto={handleAddPhoto} 
+            playerStats={effectiveStats} 
+            onUpdateVisual={handleUpdateCustomVisual} // Now calls global update
+            // Pass global visuals down to merge with UI
+            // However, we passed the handler to update them. 
+            // We should also pass the data so GrimoireView can display it.
+            // (We'll update GrimoireView prop signature in next step)
+            // @ts-ignore - Temporary ignore until next file update
+            globalVisuals={globalVisuals} 
+        />;
       case ViewState.LEADERBOARD:
         return <LeaderboardView hunters={hunters} playerStats={stats} playerName={playerName} onAddRival={handleAddRival} onExtractShadow={handleExtractShadow} />;
       case ViewState.PENALTY:

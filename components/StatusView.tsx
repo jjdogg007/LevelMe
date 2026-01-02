@@ -14,7 +14,10 @@ interface StatusViewProps {
   onUseItem?: (item: Item) => void; // New prop for using consumables
   onShareCard?: () => void;
   onPrestige?: () => void;
-  playerName?: string; 
+  playerName?: string;
+  // PWA Support
+  deferredPrompt?: any;
+  onInstallApp?: () => void;
 }
 
 // --- CONSTANTS FOR DROPDOWNS ---
@@ -251,7 +254,7 @@ const ProfileItem: React.FC<{ label: string; value: string | number; onEdit?: ()
     </div>
 );
 
-export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, onUpdateProfile, onEquipItem, onUseItem, onShareCard, onPrestige, playerName }) => {
+export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, onUpdateProfile, onEquipItem, onUseItem, onShareCard, onPrestige, playerName, deferredPrompt, onInstallApp }) => {
   const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'GEAR' | 'BADGES' | 'HISTORY' | 'SETTINGS'>('OVERVIEW');
   const [editingField, setEditingField] = useState<keyof PlayerStats | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -616,7 +619,7 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
                           <h3 className="text-white font-bold uppercase tracking-widest text-sm">Attributes</h3>
                           <button 
                             onClick={() => setShowStatHelp(true)}
-                            className="w-6 h-6 rounded-full border border-gray-600 text-gray-500 flex items-center justify-center hover:text-white hover:border-white transition-colors"
+                            className="w-full max-w-[24px] h-6 rounded-full border border-gray-600 text-gray-500 flex items-center justify-center hover:text-white hover:border-white transition-colors"
                           >
                               ?
                           </button>
@@ -898,6 +901,16 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
 
                    <SystemLayout title="System">
                       <div className="space-y-3">
+                           {/* PWA INSTALL PROMPT */}
+                           {deferredPrompt && (
+                               <button 
+                                   onClick={onInstallApp} 
+                                   className="w-full py-3 bg-blue-600 text-black font-bold uppercase tracking-widest hover:bg-blue-500 shadow-[0_0_15px_rgba(37,99,235,0.5)] animate-pulse"
+                               >
+                                   Initialize System Install
+                               </button>
+                           )}
+
                            <div className="pt-4 border-t border-gray-800">
                                <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="w-full py-3 border border-red-900 text-red-700 hover:bg-red-900/20 text-xs font-bold uppercase tracking-widest">
                                    Reset System Data

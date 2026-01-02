@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { playSystemSound } from '../services/audioService';
 import { generateSystemMessage } from '../services/geminiService';
@@ -74,10 +73,10 @@ export const VictoryScreen: React.FC<VictoryScreenProps> = ({ rewards, onClose, 
                 <p className="text-gray-400 uppercase tracking-[0.5em] text-sm mt-2">{subtext}</p>
             </div>
 
-            {/* AI SYSTEM MESSAGE */}
+            {/* AI SYSTEM MESSAGE - MANTRA STYLE */}
             {aiMessage && step >= 1 && (
                 <div className="mb-8 max-w-sm text-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <p className="text-blue-400 font-mono text-xs italic border-l-2 border-blue-500 pl-3 bg-blue-900/10 py-2">
+                    <p className="text-blue-300 font-bold font-mono text-sm leading-relaxed border-t border-b border-blue-900 py-4 italic">
                         "{aiMessage}"
                     </p>
                 </div>

@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { SystemLayout } from './SystemLayout';
+import { playSystemSound } from '../services/audioService';
 
 interface SkillModalProps {
   name: string;
@@ -13,11 +14,29 @@ interface SkillModalProps {
     videoUrl?: string;
     gifData?: string;
   };
+  customVisual?: string; // New prop for overridden URL (Priority 1)
   onClose: () => void;
+  onUpdateVisual?: (name: string, url: string) => void;
 }
 
-export const SkillModal: React.FC<SkillModalProps> = ({ name, data, onClose }) => {
+export const SkillModal: React.FC<SkillModalProps> = ({ name, data, customVisual, onClose, onUpdateVisual }) => {
   const [imgError, setImgError] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [inputUrl, setInputUrl] = useState(customVisual || "");
+
+  const handleSaveOverride = () => {
+      if (onUpdateVisual) {
+          playSystemSound('success');
+          onUpdateVisual(name, inputUrl);
+          setIsEditing(false);
+      }
+  };
+
+  const handleSearch = () => {
+      playSystemSound('click');
+      const query = encodeURIComponent(`${name} exercise gif`);
+      window.open(`https://www.google.com/search?tbm=isch&q=${query}`, '_blank');
+  };
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
@@ -35,18 +54,72 @@ export const SkillModal: React.FC<SkillModalProps> = ({ name, data, onClose }) =
                 </span>
               </div>
             </div>
-            <div className="w-10 h-10 bg-blue-900/20 border border-blue-500/50 flex items-center justify-center">
-               <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                </svg>
+            
+            {/* Action Buttons */}
+            <div className="flex space-x-2">
+                {onUpdateVisual && (
+                    <button 
+                        onClick={() => { playSystemSound('click'); setIsEditing(!isEditing); }}
+                        className={`w-10 h-10 border flex items-center justify-center transition-colors ${isEditing ? 'bg-yellow-900/50 border-yellow-500 text-yellow-400' : 'bg-blue-900/20 border-blue-500/50 text-blue-400 hover:text-white'}`}
+                        title="Edit Visual Data"
+                    >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" /></svg>
+                    </button>
+                )}
             </div>
           </div>
 
           <div className="space-y-4 max-h-[60vh] overflow-y-auto scrollbar-hide pr-1">
             
+            {/* VISUAL EDIT MODE */}
+            {isEditing && (
+                <div className="bg-yellow-900/10 border border-yellow-600/50 p-3 mb-4 animate-in slide-in-from-top-4">
+                    <p className="text-[10px] text-yellow-500 uppercase font-bold mb-2 flex items-center">
+                        <span className="mr-2">⚠ SYSTEM OVERRIDE: VISUAL DATA</span>
+                    </p>
+                    <p className="text-[9px] text-gray-400 mb-2 italic">Changes will apply to the Global System Database.</p>
+                    
+                    <input 
+                        type="text" 
+                        value={inputUrl}
+                        onChange={(e) => setInputUrl(e.target.value)}
+                        placeholder="Paste Image/GIF Link..."
+                        className="w-full bg-black border border-gray-700 text-white text-xs p-2 mb-2 focus:border-yellow-500 focus:outline-none"
+                    />
+                    <div className="flex space-x-2">
+                        <button 
+                            onClick={handleSearch}
+                            className="flex-1 py-2 border border-gray-600 text-gray-400 text-[10px] uppercase font-bold hover:text-white hover:border-white"
+                        >
+                            Search Network
+                        </button>
+                        <button 
+                            onClick={handleSaveOverride}
+                            className="flex-1 py-2 bg-yellow-600 text-black text-[10px] uppercase font-bold hover:bg-yellow-500"
+                        >
+                            Deploy to System
+                        </button>
+                    </div>
+                    <p className="text-[9px] text-gray-500 mt-2 italic">Tip: Right-click a Google Image result and select "Copy Image Address".</p>
+                </div>
+            )}
+
             {/* Visual Data Display */}
             <div className="relative w-full aspect-video border border-blue-500/30 bg-gray-900 overflow-hidden shadow-[0_0_15px_rgba(37,99,235,0.2)] rounded-sm">
-                {data.gifData ? (
+                {/* Priority: Custom -> GIF Data -> Video URL -> Fallback */}
+                {customVisual ? (
+                    <img 
+                        src={customVisual} 
+                        alt={name} 
+                        className="w-full h-full object-cover grayscale opacity-90 brightness-110"
+                        onError={(e) => { 
+                            // If custom link fails, hide it and trigger error state (falls back to default logic if component re-renders or handled above)
+                            // Note: In React, falling back to other props requires conditional rendering logic above this block.
+                            e.currentTarget.style.display = 'none'; 
+                            setImgError(true); 
+                        }}
+                    />
+                ) : data.gifData ? (
                     <img 
                         src={`data:image/gif;base64,${data.gifData}`}
                         alt={name} 

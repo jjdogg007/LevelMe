@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { SystemLayout } from './SystemLayout';
-import { STARTING_CLASSES } from '../constants';
+import { STARTING_CLASSES, GOD_MODE_STATS } from '../constants';
 import { PlayerStats } from '../types';
 import { playSystemSound } from '../services/audioService';
 
@@ -108,6 +107,15 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin, storedName }) =
   const handleLoginSubmit = async () => {
       if(!name || verifying) return;
       
+      // --- GOD MODE EASTER EGG ---
+      if (name.toLowerCase() === 'all might' || name.toLowerCase() === 'plus ultra') {
+          playSystemSound('levelUp');
+          const godName = name.toUpperCase();
+          // Directly login with God Stats overrides
+          await onLogin(godName, GOD_MODE_STATS);
+          return;
+      }
+
       setVerifying(true);
       
       try {
@@ -380,8 +388,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin, storedName }) =
                     </div>
                 )}
 
-                {/* ... (Existing Signup Flow Logic Remains Unchanged below this point) ... */}
-                
                 {/* STEP 1: NAME */}
                 {authState === 'SIGNUP_NAME' && (
                     <div className="flex flex-col h-full animate-in slide-in-from-right-10 duration-300">

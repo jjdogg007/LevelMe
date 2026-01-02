@@ -1,4 +1,3 @@
-
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { NutritionPlan, PlayerStats, DailyQuest, Item, StoryLogEntry } from "../types";
 import { NPC_ROSTER } from "../constants";
@@ -390,16 +389,27 @@ export const generateSpecialQuest = async (stats: PlayerStats): Promise<DailyQue
 
 export const generateSystemMessage = async (type: 'victory' | 'defeat' | 'levelUp', context: string): Promise<string> => {
     const ai = getAI();
-    if (!ai) return "System Status: Online.";
+    // Default fallback if AI fails or no key
+    if (!ai) {
+        if (type === 'victory') return "Quest Complete. Strength Increased.";
+        return "System Status: Online.";
+    }
 
     try {
-        const tone = "Cold, robotic, threatening but acknowledging power. Like the System in Solo Leveling.";
         const prompt = `
-            You are 'The System'. The user has triggered event: ${type}.
+            You are 'The System' from a dark fantasy fitness RPG (Solo Leveling inspired). The player has just triggered event: ${type}.
             Context: ${context}.
-            Generate a 1-sentence system notification message.
-            Tone: ${tone}.
-            Do NOT use quotes.
+            
+            TASK: Generate a profound, philosophical mantra about discipline, strength, and the cost of power. 
+            
+            VIBE / EXAMPLES (Do not copy exact words, emulate the feeling):
+            - "Routines are rituals of devotion to yourself and your dreams."
+            - "It takes a special kind of freak to find the Blade of No One Made You Do This and use it to cut your potential out."
+            - "To have no routine is to be enslaved by the daily chaos of life."
+            - "Pain is just weakness leaving the body. Do hard things daily to build self-trust."
+            - "The Land of Laziness and the Plains of Procrastination are behind you."
+            
+            OUTPUT: A single, powerful sentence. Do not use quotes.
         `;
 
         const response = await ai.models.generateContent({
@@ -407,9 +417,9 @@ export const generateSystemMessage = async (type: 'victory' | 'defeat' | 'levelU
             contents: prompt,
         });
 
-        return response.text?.trim() || "System acknowledgement received.";
+        return response.text?.trim() || "Routine is the foundation of power.";
     } catch (error) {
-        return "System Status: Online.";
+        return "Routine is the foundation of power.";
     }
 }
 
