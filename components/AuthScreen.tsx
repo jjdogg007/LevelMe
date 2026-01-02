@@ -6,7 +6,7 @@ import { PlayerStats } from '../types';
 import { playSystemSound } from '../services/audioService';
 
 interface AuthScreenProps {
-  onLogin: (name: string, stats?: Partial<PlayerStats>) => void;
+  onLogin: (name: string, stats?: Partial<PlayerStats>) => Promise<boolean>; // Made Async
   storedName?: string;
 }
 
@@ -36,6 +36,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin, storedName }) =
   const [authState, setAuthState] = useState<AuthState>('BOOT');
   const [name, setName] = useState('');
   const [loginError, setLoginError] = useState(false);
+  const [verifying, setVerifying] = useState(false); // New state for async check
   const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
   
   // Profile Data
@@ -50,7 +51,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin, storedName }) =
   const [goal, setGoal] = useState(GOAL_OPTIONS[0]);
   const [motivation, setMotivation] = useState(MOTIVATION_OPTIONS[0]);
   const [activityLevel, setActivityLevel] = useState(ACTIVITY_OPTIONS[2]);
-  const [autoDistribute, setAutoDistribute] = useState(false); // New State
+  const [autoDistribute, setAutoDistribute] = useState(false); 
 
   // Onboarding Data
   const [frequency, setFrequency] = useState(3);
@@ -72,7 +73,6 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin, storedName }) =
   const handleSignupComplete = () => {
     setAuthState('AWAKENING');
     
-    // Fake "Processing" delay
     setTimeout(() => {
         const selectedClass = STARTING_CLASSES.find(c => c.id === selectedClassId);
         
@@ -101,25 +101,29 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin, storedName }) =
 
   const handleResumeClick = () => {
       playSystemSound('click');
-      if (!storedName) {
-          playSystemSound('glitch');
-          alert("No System Data Found on this Device.");
-          return;
-      }
+      if (storedName) setName(storedName);
       setAuthState('LOGIN');
   };
 
-  const handleLoginSubmit = () => {
-      if(!name) return;
+  const handleLoginSubmit = async () => {
+      if(!name || verifying) return;
       
-      // Match Check
-      if (name.trim().toLowerCase() === storedName?.trim().toLowerCase()) {
-          playSystemSound('success');
-          onLogin(storedName);
-      } else {
-          playSystemSound('glitch');
+      setVerifying(true);
+      
+      try {
+          const success = await onLogin(name);
+          if (success) {
+              playSystemSound('success');
+              // onLogin handles state transition in App.tsx
+          } else {
+              playSystemSound('glitch');
+              setLoginError(true);
+              setTimeout(() => setLoginError(false), 2000);
+          }
+      } catch (e) {
           setLoginError(true);
-          setTimeout(() => setLoginError(false), 2000);
+      } finally {
+          setVerifying(false);
       }
   };
 
@@ -349,26 +353,35 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLogin, storedName }) =
                              <input 
                                 type="text" 
                                 value={name}
+                                disabled={verifying}
                                 onChange={(e) => { setName(e.target.value); setLoginError(false); }}
                                 className={`w-full bg-black border text-white px-4 py-3 text-center font-bold tracking-widest focus:outline-none transition-all
                                     ${loginError ? 'border-red-500 shadow-[0_0_15px_rgba(220,38,38,0.5)]' : 'border-blue-500 focus:shadow-[0_0_15px_rgba(37,99,235,0.5)]'}
+                                    ${verifying ? 'opacity-50 cursor-wait' : ''}
                                 `}
                                 placeholder="PLAYER NAME"
                                 onKeyDown={(e) => e.key === 'Enter' && handleLoginSubmit()}
                             />
                             {loginError && (
-                                <p className="text-red-500 text-center text-xs font-mono mt-2 animate-pulse">ACCESS DENIED: IDENTITY MISMATCH</p>
+                                <p className="text-red-500 text-center text-xs font-mono mt-2 animate-pulse">ACCESS DENIED: IDENTITY UNKNOWN</p>
                             )}
                         </div>
                         <div className="flex space-x-2 pt-4">
-                            <button onClick={() => { setAuthState('MENU'); setLoginError(false); setName(''); }} className="flex-1 py-3 border border-gray-700 text-gray-500 hover:text-white uppercase text-xs font-bold">Back</button>
-                            <button onClick={handleLoginSubmit} className="flex-[2] py-3 bg-blue-600 hover:bg-blue-500 text-black uppercase text-xs font-bold tracking-widest shadow-[0_0_10px_rgba(37,99,235,0.5)]">Verify</button>
+                            <button disabled={verifying} onClick={() => { setAuthState('MENU'); setLoginError(false); setName(''); }} className="flex-1 py-3 border border-gray-700 text-gray-500 hover:text-white uppercase text-xs font-bold disabled:opacity-50">Back</button>
+                            <button 
+                                onClick={handleLoginSubmit} 
+                                disabled={verifying}
+                                className="flex-[2] py-3 bg-blue-600 hover:bg-blue-500 text-black uppercase text-xs font-bold tracking-widest shadow-[0_0_10px_rgba(37,99,235,0.5)] flex items-center justify-center disabled:opacity-50 disabled:cursor-wait"
+                            >
+                                {verifying ? <span className="animate-spin mr-2">⟳</span> : null}
+                                {verifying ? 'VERIFYING...' : 'VERIFY'}
+                            </button>
                         </div>
                     </div>
                 )}
 
-                {/* --- ONBOARDING FLOW --- */}
-
+                {/* ... (Existing Signup Flow Logic Remains Unchanged below this point) ... */}
+                
                 {/* STEP 1: NAME */}
                 {authState === 'SIGNUP_NAME' && (
                     <div className="flex flex-col h-full animate-in slide-in-from-right-10 duration-300">

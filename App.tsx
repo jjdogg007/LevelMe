@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PlayerStats, DailyQuest, ViewState, QuestTask, Hunter, Dungeon, Item, Rarity } from './types';
 import { INITIAL_STATS, INITIAL_DAILY_QUEST, REST_DAY_TASKS, SYSTEM_DATABASE, SHADOW_ARMY, INITIAL_HUNTERS, STARTING_CLASSES, PATROL_MISSIONS, JOB_CHANGE_QUEST, STORY_CAMPAIGN, WORLD_BOSS, MASTERY_THRESHOLDS } from './constants';
 import { StatusView } from './components/StatusView';
@@ -19,6 +18,7 @@ import { SystemTicker } from './components/SystemTicker';
 import { generatePersonalizedWorkout } from './services/geminiService';
 import { playSystemSound, speakSystemMessage, initAudio } from './services/audioService';
 import { fetchDailySteps } from './services/googleFitService';
+import { supabase, isSupabaseConfigured } from './services/supabaseClient';
 
 const LevelUpParticles = () => {
     return (
@@ -92,6 +92,9 @@ const App: React.FC = () => {
   
   // Gate Scanning
   const [dailySteps, setDailySteps] = useState(0);
+
+  // Debounce ref for saving
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Helper: Get Stats with Shadow Buffs included
   const getEffectiveStats = (baseStats: PlayerStats) => {
@@ -281,107 +284,6 @@ const App: React.FC = () => {
       }
   };
 
-  // --- PERSISTENCE ---
-  useEffect(() => {
-    const savedStats = localStorage.getItem('leveling_player_stats');
-    const savedName = localStorage.getItem('leveling_player_name');
-    const savedSpecial = localStorage.getItem('leveling_special_quest');
-    const savedQuestStarted = localStorage.getItem('leveling_quest_started');
-    const savedHunters = localStorage.getItem('leveling_hunters');
-    const savedShadows = localStorage.getItem('leveling_shadow_status');
-
-    if (savedSpecial) setSpecialQuest(JSON.parse(savedSpecial));
-    if (savedQuestStarted) setIsQuestStarted(JSON.parse(savedQuestStarted));
-    if (savedShadows) setShadowStatus(JSON.parse(savedShadows));
-    
-    if (savedHunters) setHunters(JSON.parse(savedHunters));
-    else setHunters(INITIAL_HUNTERS);
-
-    if (savedStats && savedName) {
-        let parsedStats: PlayerStats = JSON.parse(savedStats);
-        setPlayerName(savedName);
-        
-        // Backwards compatibility for new features
-        if (!parsedStats.hunterCode) parsedStats.hunterCode = `H-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
-        if (!parsedStats.skillMastery) parsedStats.skillMastery = {};
-        if (!parsedStats.prestigeLevel) parsedStats.prestigeLevel = 0;
-        if (!parsedStats.completedChapters) parsedStats.completedChapters = [];
-        if (!parsedStats.hiddenStats) parsedStats.hiddenStats = { strengthReps: 0, cardioReps: 0, totalWorkouts: 0 };
-        if (parsedStats.autoDistributeStats === undefined) parsedStats.autoDistributeStats = false;
-        if (!parsedStats.storyLog) parsedStats.storyLog = [];
-        if (!parsedStats.relationships) parsedStats.relationships = {};
-
-        const lastLogin = new Date(parsedStats.lastLoginDate);
-        const today = new Date();
-        const lastDateOnly = new Date(lastLogin.getFullYear(), lastLogin.getMonth(), lastLogin.getDate());
-        const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-        const diffTime = Math.abs(todayDateOnly.getTime() - lastDateOnly.getTime());
-        const diffHours = Math.abs(today.getTime() - lastLogin.getTime()) / (1000 * 60 * 60);
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-
-        let newStreak = parsedStats.streak;
-        let newXp = parsedStats.xp;
-        let shieldUsed = false;
-        
-        const checkPenalty = async () => {
-            // === DUNGEON BREAK LOGIC (Rule-Based Inactivity) ===
-            if (diffHours > 48) {
-                // Force Emergency Quest
-                setDailyQuest(prev => ({
-                    ...prev,
-                    title: "DUNGEON BREAK DETECTED",
-                    description: "You have ignored the System for too long. A Red Gate has opened.",
-                    difficulty: "S",
-                    status: 'active',
-                    type: "emergency",
-                    tasks: [
-                        { id: 'break_1', name: 'BURPEES', target: 30, current: 0, unit: 'reps' },
-                        { id: 'break_2', name: 'MOUNTAIN CLIMBERS', target: 50, current: 0, unit: 'reps' },
-                        { id: 'break_3', name: 'PLANK', target: 90, current: 0, unit: 'sec' }
-                    ]
-                }));
-                // Lock Navigation implicitly by setting isQuestStarted to false but quest type to emergency
-                setIsQuestStarted(true); 
-                setNotificationMsg("SYSTEM ALERT: SURVIVE THE BREAK");
-                setShowNotification(true);
-            } 
-            else if (diffDays > 1 && parsedStats.streak > 0) {
-                if (parsedStats.streakShield) {
-                    shieldUsed = true;
-                    setNotificationMsg("Streak Shield Activated. Fatigue Negated.");
-                    setShowNotification(true);
-                    setTimeout(() => setShowNotification(false), 4000);
-                } else {
-                    newStreak = 0;
-                    newXp = Math.max(0, newXp - 50); 
-                    playSystemSound('glitch');
-                    setPenaltyMessage("QUEST FAILED. Streak reset. -50 XP.");
-                    setIsQuestStarted(false);
-                    setDailyQuest(prev => ({...prev, status: 'failed'}));
-                }
-            }
-            if (diffDays > 0) {
-                 const updatedHunters = [...(JSON.parse(savedHunters || JSON.stringify(INITIAL_HUNTERS)) as Hunter[])];
-                 updatedHunters.forEach(h => {
-                     if (h.isRival) h.level += 1;
-                     else if (Math.random() > 0.5) h.level += 1;
-                 });
-                 setHunters(updatedHunters);
-            }
-            setStats({
-                ...parsedStats,
-                streak: newStreak,
-                xp: newXp,
-                streakShield: shieldUsed ? false : parsedStats.streakShield, 
-                lastLoginDate: new Date().toISOString()
-            });
-            // Removed Auto Login here to support AuthScreen verification
-        };
-        checkPenalty();
-    }
-  }, []);
-
   // Poll for Steps if Google Fit connected
   useEffect(() => {
       if (isLoggedIn) {
@@ -444,21 +346,44 @@ const App: React.FC = () => {
       }
   }, [isLoggedIn]);
 
-  // Save State
+  // --- SAVE STATE (Debounced) ---
   useEffect(() => {
-      if (isLoggedIn) {
-        localStorage.setItem('leveling_player_stats', JSON.stringify(stats));
-        localStorage.setItem('leveling_player_name', playerName);
-        localStorage.setItem('leveling_quest_started', JSON.stringify(isQuestStarted));
-        localStorage.setItem('leveling_hunters', JSON.stringify(hunters));
-        localStorage.setItem('leveling_shadow_status', JSON.stringify(shadowStatus));
-      }
-  }, [stats, playerName, isLoggedIn, isQuestStarted, hunters, shadowStatus]);
+      if (isLoggedIn && playerName) {
+          // Clear previous timeout
+          if (saveTimeoutRef.current) {
+              clearTimeout(saveTimeoutRef.current);
+          }
 
-  useEffect(() => {
-      if (specialQuest) localStorage.setItem('leveling_special_quest', JSON.stringify(specialQuest));
-      else localStorage.removeItem('leveling_special_quest');
-  }, [specialQuest]);
+          // Debounce save by 2 seconds
+          saveTimeoutRef.current = setTimeout(async () => {
+              // Local Backup
+              localStorage.setItem('leveling_player_stats', JSON.stringify(stats));
+              localStorage.setItem('leveling_player_name', playerName);
+              localStorage.setItem('leveling_quest_started', JSON.stringify(isQuestStarted));
+              localStorage.setItem('leveling_hunters', JSON.stringify(hunters));
+              localStorage.setItem('leveling_shadow_status', JSON.stringify(shadowStatus));
+              if (specialQuest) localStorage.setItem('leveling_special_quest', JSON.stringify(specialQuest));
+              else localStorage.removeItem('leveling_special_quest');
+
+              // Cloud Sync (Supabase)
+              if (isSupabaseConfigured() && supabase) {
+                  try {
+                      await supabase.from('players').upsert({
+                          name: playerName,
+                          stats: stats,
+                          updated_at: new Date().toISOString()
+                      }, { onConflict: 'name' });
+                  } catch (err) {
+                      console.error("Cloud Sync Failed", err);
+                  }
+              }
+          }, 2000);
+      }
+      
+      return () => {
+          if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      }
+  }, [stats, playerName, isLoggedIn, isQuestStarted, hunters, shadowStatus, specialQuest]);
 
   useEffect(() => {
     const calculateTimeLeft = () => {
@@ -480,22 +405,142 @@ const App: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  const handleAuthLogin = (name: string, startingStats?: Partial<PlayerStats>) => {
+  const initializePlayerState = (loadedStats: PlayerStats, name: string) => {
+        // Backwards compatibility for new features
+        if (!loadedStats.hunterCode) loadedStats.hunterCode = `H-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+        if (!loadedStats.skillMastery) loadedStats.skillMastery = {};
+        if (!loadedStats.prestigeLevel) loadedStats.prestigeLevel = 0;
+        if (!loadedStats.completedChapters) loadedStats.completedChapters = [];
+        if (!loadedStats.hiddenStats) loadedStats.hiddenStats = { strengthReps: 0, cardioReps: 0, totalWorkouts: 0 };
+        if (loadedStats.autoDistributeStats === undefined) loadedStats.autoDistributeStats = false;
+        if (!loadedStats.storyLog) loadedStats.storyLog = [];
+        if (!loadedStats.relationships) loadedStats.relationships = {};
+
+        const lastLogin = new Date(loadedStats.lastLoginDate);
+        const today = new Date();
+        const lastDateOnly = new Date(lastLogin.getFullYear(), lastLogin.getMonth(), lastLogin.getDate());
+        const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+        const diffTime = Math.abs(todayDateOnly.getTime() - lastDateOnly.getTime());
+        const diffHours = Math.abs(today.getTime() - lastLogin.getTime()) / (1000 * 60 * 60);
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+
+        let newStreak = loadedStats.streak;
+        let newXp = loadedStats.xp;
+        let shieldUsed = false;
+        
+        // === DUNGEON BREAK LOGIC (Rule-Based Inactivity) ===
+        if (diffHours > 48) {
+            // Force Emergency Quest
+            setDailyQuest(prev => ({
+                ...prev,
+                title: "DUNGEON BREAK DETECTED",
+                description: "You have ignored the System for too long. A Red Gate has opened.",
+                difficulty: "S",
+                status: 'active',
+                type: "emergency",
+                tasks: [
+                    { id: 'break_1', name: 'BURPEES', target: 30, current: 0, unit: 'reps' },
+                    { id: 'break_2', name: 'MOUNTAIN CLIMBERS', target: 50, current: 0, unit: 'reps' },
+                    { id: 'break_3', name: 'PLANK', target: 90, current: 0, unit: 'sec' }
+                ]
+            }));
+            setIsQuestStarted(true); 
+            setNotificationMsg("SYSTEM ALERT: SURVIVE THE BREAK");
+            setShowNotification(true);
+        } 
+        else if (diffDays > 1 && loadedStats.streak > 0) {
+            if (loadedStats.streakShield) {
+                shieldUsed = true;
+                setNotificationMsg("Streak Shield Activated. Fatigue Negated.");
+                setShowNotification(true);
+                setTimeout(() => setShowNotification(false), 4000);
+            } else {
+                newStreak = 0;
+                newXp = Math.max(0, newXp - 50); 
+                playSystemSound('glitch');
+                setPenaltyMessage("QUEST FAILED. Streak reset. -50 XP.");
+                setIsQuestStarted(false);
+                setDailyQuest(prev => ({...prev, status: 'failed'}));
+            }
+        }
+        
+        setStats({
+            ...loadedStats,
+            streak: newStreak,
+            xp: newXp,
+            streakShield: shieldUsed ? false : loadedStats.streakShield, 
+            lastLoginDate: new Date().toISOString()
+        });
+        setPlayerName(name);
+        setIsLoggedIn(true);
+        speakSystemMessage(`Welcome back, ${name}.`);
+  };
+
+  const handleAuthLogin = async (name: string, startingStats?: Partial<PlayerStats>): Promise<boolean> => {
+      // 1. Check Supabase First
+      if (isSupabaseConfigured() && supabase) {
+          try {
+              if (startingStats) {
+                  // SIGNUP FLOW: Create New User
+                  const newHunterCode = `H-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+                  const fullStats = {
+                      ...INITIAL_STATS,
+                      ...startingStats,
+                      title: "Novice Hunter",
+                      hunterCode: newHunterCode,
+                      lastLoginDate: new Date().toISOString()
+                  };
+                  
+                  const { error } = await supabase.from('players').insert({
+                      name: name,
+                      stats: fullStats
+                  });
+                  
+                  if (error) throw error;
+                  initializePlayerState(fullStats, name);
+                  return true;
+              } else {
+                  // LOGIN FLOW: Fetch User
+                  const { data, error } = await supabase.from('players').select('stats').eq('name', name).single();
+                  
+                  if (error || !data) return false; // User not found
+                  
+                  // Load fetched data
+                  initializePlayerState(data.stats, name);
+                  return true;
+              }
+          } catch (err) {
+              console.error("Supabase Error:", err);
+              // Fallback to LocalStorage if network fail
+          }
+      }
+
+      // 2. LocalStorage Fallback (Offline Mode)
+      const savedName = localStorage.getItem('leveling_player_name');
+      const savedStats = localStorage.getItem('leveling_player_stats');
+
       if (startingStats) {
-          // New Game Logic
+          // Local Signup
           const newHunterCode = `H-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
-          setPlayerName(name);
-          setStats(prev => ({
-              ...prev,
+          const fullStats = {
+              ...INITIAL_STATS,
               ...startingStats,
               title: "Novice Hunter",
               hunterCode: newHunterCode,
               lastLoginDate: new Date().toISOString()
-          }));
+          };
+          initializePlayerState(fullStats, name);
+          return true;
+      } else {
+          // Local Login Check
+          if (savedName && savedName.toLowerCase() === name.toLowerCase() && savedStats) {
+              initializePlayerState(JSON.parse(savedStats), savedName);
+              return true;
+          }
       }
-      // Resume Logic handles stats automatically via effect, just need to set logged in
-      setIsLoggedIn(true);
-      speakSystemMessage(`Welcome, ${name}.`);
+
+      return false;
   };
 
   const handleIncreaseStat = (stat: keyof PlayerStats) => {
@@ -1000,7 +1045,9 @@ const App: React.FC = () => {
   };
 
   if (!isLoggedIn) {
-      return <AuthScreen onLogin={handleAuthLogin} storedName={playerName} />;
+      // Pre-fill last local name for easier resume
+      const lastUser = localStorage.getItem('leveling_player_name') || '';
+      return <AuthScreen onLogin={handleAuthLogin} storedName={lastUser} />;
   }
 
   if (victoryState) {
@@ -1037,7 +1084,6 @@ const App: React.FC = () => {
       return <div className="min-h-screen bg-black text-white p-4"><ShopView stats={stats} onBuy={handleBuy} onClose={() => setIsShopOpen(false)} onAddItem={handleAddItem} /></div>;
   }
 
-  // --- NEW: Dungeon View Handling ---
   if (isDungeonOpen) {
       return (
           <div className="min-h-screen bg-black text-white">
@@ -1050,7 +1096,6 @@ const App: React.FC = () => {
       );
   }
 
-  // Pass effective stats to views
   const effectiveStats = getEffectiveStats(stats);
 
   const renderView = () => {
@@ -1065,7 +1110,7 @@ const App: React.FC = () => {
             onSetSpecialQuest={setSpecialQuest} 
             onRegenerate={handleRegenerateQuest} 
             onOpenShop={() => setIsShopOpen(true)} 
-            onOpenDungeon={() => setIsDungeonOpen(true)} // Pass new handler
+            onOpenDungeon={() => setIsDungeonOpen(true)}
             keys={stats.keys} 
             stats={effectiveStats} 
             isGenerating={isGenerating} 
