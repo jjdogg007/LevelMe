@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { PlayerStats, DailyQuest, ViewState, QuestTask, Hunter, Dungeon, Item, Rarity } from './types';
 import { INITIAL_STATS, INITIAL_DAILY_QUEST, REST_DAY_TASKS, SYSTEM_DATABASE, SHADOW_ARMY, INITIAL_HUNTERS, STARTING_CLASSES, PATROL_MISSIONS, JOB_CHANGE_QUEST, STORY_CAMPAIGN, WORLD_BOSS, MASTERY_THRESHOLDS } from './constants';
@@ -18,7 +19,8 @@ import { SystemTicker } from './components/SystemTicker';
 import { generatePersonalizedWorkout } from './services/geminiService';
 import { playSystemSound, speakSystemMessage, initAudio } from './services/audioService';
 import { fetchDailySteps } from './services/googleFitService';
-import { supabase, isSupabaseConfigured } from './services/supabaseClient';
+import { db, isFirebaseConfigured } from './services/firebase';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const LevelUpParticles = () => {
     return (
@@ -365,14 +367,15 @@ const App: React.FC = () => {
               if (specialQuest) localStorage.setItem('leveling_special_quest', JSON.stringify(specialQuest));
               else localStorage.removeItem('leveling_special_quest');
 
-              // Cloud Sync (Supabase)
-              if (isSupabaseConfigured() && supabase) {
+              // Cloud Sync (Firebase)
+              if (isFirebaseConfigured() && db) {
                   try {
-                      await supabase.from('players').upsert({
+                      const docRef = doc(db, 'players', playerName);
+                      await setDoc(docRef, {
                           name: playerName,
                           stats: stats,
                           updated_at: new Date().toISOString()
-                      }, { onConflict: 'name' });
+                      }, { merge: true });
                   } catch (err) {
                       console.error("Cloud Sync Failed", err);
                   }
@@ -478,11 +481,20 @@ const App: React.FC = () => {
   };
 
   const handleAuthLogin = async (name: string, startingStats?: Partial<PlayerStats>): Promise<boolean> => {
-      // 1. Check Supabase First
-      if (isSupabaseConfigured() && supabase) {
+      // 1. Check Firebase First
+      if (isFirebaseConfigured() && db) {
           try {
+              const docRef = doc(db, 'players', name);
+              
               if (startingStats) {
                   // SIGNUP FLOW: Create New User
+                  // Check if exists first to avoid overwriting
+                  const docSnap = await getDoc(docRef);
+                  if (docSnap.exists()) {
+                      alert("Identity already taken. Choose another.");
+                      return false;
+                  }
+
                   const newHunterCode = `H-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
                   const fullStats = {
                       ...INITIAL_STATS,
@@ -492,26 +504,27 @@ const App: React.FC = () => {
                       lastLoginDate: new Date().toISOString()
                   };
                   
-                  const { error } = await supabase.from('players').insert({
+                  await setDoc(docRef, {
                       name: name,
-                      stats: fullStats
+                      stats: fullStats,
+                      created_at: new Date().toISOString()
                   });
                   
-                  if (error) throw error;
                   initializePlayerState(fullStats, name);
                   return true;
               } else {
                   // LOGIN FLOW: Fetch User
-                  const { data, error } = await supabase.from('players').select('stats').eq('name', name).single();
+                  const docSnap = await getDoc(docRef);
                   
-                  if (error || !data) return false; // User not found
+                  if (!docSnap.exists()) return false; // User not found
                   
                   // Load fetched data
+                  const data = docSnap.data();
                   initializePlayerState(data.stats, name);
                   return true;
               }
           } catch (err) {
-              console.error("Supabase Error:", err);
+              console.error("Firebase Error:", err);
               // Fallback to LocalStorage if network fail
           }
       }
