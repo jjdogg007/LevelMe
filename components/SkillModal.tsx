@@ -1,7 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SystemLayout } from './SystemLayout';
 import { playSystemSound } from '../services/audioService';
+import { generateExerciseVisual } from '../services/geminiService';
+import { saveImageToCache, getImageFromCache } from '../services/imageCache';
 
 interface SkillModalProps {
   name: string;
@@ -14,7 +16,7 @@ interface SkillModalProps {
     videoUrl?: string;
     gifData?: string;
   };
-  customVisual?: string; // New prop for overridden URL (Priority 1)
+  customVisual?: string; 
   onClose: () => void;
   onUpdateVisual?: (name: string, url: string) => void;
 }
@@ -23,6 +25,18 @@ export const SkillModal: React.FC<SkillModalProps> = ({ name, data, customVisual
   const [imgError, setImgError] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [inputUrl, setInputUrl] = useState(customVisual || "");
+  const [cachedVisual, setCachedVisual] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  
+  // Animation State
+  const [isPlaying, setIsPlaying] = useState(true);
+
+  // Load from cache on mount
+  useEffect(() => {
+      getImageFromCache(name).then((img) => {
+          if (img) setCachedVisual(img);
+      });
+  }, [name]);
 
   const handleSaveOverride = () => {
       if (onUpdateVisual) {
@@ -37,6 +51,38 @@ export const SkillModal: React.FC<SkillModalProps> = ({ name, data, customVisual
       const query = encodeURIComponent(`${name} exercise gif`);
       window.open(`https://www.google.com/search?tbm=isch&q=${query}`, '_blank');
   };
+
+  const handleGenerateBlueprint = async () => {
+      if (!process.env.API_KEY && !localStorage.getItem('leveling_api_key')) {
+          alert("System Error: API Key required for schematic generation.");
+          return;
+      }
+      playSystemSound('click');
+      setGenerating(true);
+      
+      const visual = await generateExerciseVisual(name, data.type);
+      
+      if (visual) {
+          playSystemSound('levelUp');
+          await saveImageToCache(name, visual);
+          setCachedVisual(visual);
+          // CRITICAL: Update parent immediately so Grimoire grid reflects it instantly
+          if (onUpdateVisual) {
+              onUpdateVisual(name, visual);
+          }
+      } else {
+          playSystemSound('glitch');
+          alert("Generation Failed. System busy.");
+      }
+      setGenerating(false);
+  };
+
+  // Helper to determine active source
+  // Priority: Cache -> Custom Override -> GIF Data -> Video URL
+  const activeSource = cachedVisual || customVisual || (data.gifData ? `data:image/gif;base64,${data.gifData}` : (data.videoUrl && !imgError ? data.videoUrl : null));
+  
+  // Determine if we should attempt sprite animation (Generated or data URI typically)
+  const isGenerated = activeSource && activeSource.startsWith('data:image');
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
@@ -74,11 +120,7 @@ export const SkillModal: React.FC<SkillModalProps> = ({ name, data, customVisual
             {/* VISUAL EDIT MODE */}
             {isEditing && (
                 <div className="bg-yellow-900/10 border border-yellow-600/50 p-3 mb-4 animate-in slide-in-from-top-4">
-                    <p className="text-[10px] text-yellow-500 uppercase font-bold mb-2 flex items-center">
-                        <span className="mr-2">⚠ SYSTEM OVERRIDE: VISUAL DATA</span>
-                    </p>
-                    <p className="text-[9px] text-gray-400 mb-2 italic">Changes will apply to the Global System Database.</p>
-                    
+                    <p className="text-[10px] text-yellow-500 uppercase font-bold mb-2">System Override: Visual Data</p>
                     <input 
                         type="text" 
                         value={inputUrl}
@@ -97,53 +139,122 @@ export const SkillModal: React.FC<SkillModalProps> = ({ name, data, customVisual
                             onClick={handleSaveOverride}
                             className="flex-1 py-2 bg-yellow-600 text-black text-[10px] uppercase font-bold hover:bg-yellow-500"
                         >
-                            Deploy to System
+                            Save Override
                         </button>
                     </div>
-                    <p className="text-[9px] text-gray-500 mt-2 italic">Tip: Right-click a Google Image result and select "Copy Image Address".</p>
                 </div>
             )}
 
             {/* Visual Data Display */}
-            <div className="relative w-full aspect-video border border-blue-500/30 bg-gray-900 overflow-hidden shadow-[0_0_15px_rgba(37,99,235,0.2)] rounded-sm">
-                {/* Priority: Custom -> GIF Data -> Video URL -> Fallback */}
-                {customVisual ? (
-                    <img 
-                        src={customVisual} 
-                        alt={name} 
-                        className="w-full h-full object-cover grayscale opacity-90 brightness-110"
-                        onError={(e) => { 
-                            // If custom link fails, hide it and trigger error state (falls back to default logic if component re-renders or handled above)
-                            // Note: In React, falling back to other props requires conditional rendering logic above this block.
-                            e.currentTarget.style.display = 'none'; 
-                            setImgError(true); 
-                        }}
-                    />
-                ) : data.gifData ? (
-                    <img 
-                        src={`data:image/gif;base64,${data.gifData}`}
-                        alt={name} 
-                        className="w-full h-full object-cover grayscale opacity-90 brightness-110"
-                    />
-                ) : data.videoUrl && !imgError ? (
-                    <img 
-                        src={data.videoUrl} 
-                        alt={name} 
-                        onError={() => setImgError(true)}
-                        className="w-full h-full object-cover grayscale opacity-90 brightness-110"
-                    />
+            <div className="relative w-full aspect-video border border-blue-500/30 bg-gray-900 overflow-hidden shadow-[0_0_15px_rgba(37,99,235,0.2)] rounded-sm group">
+                {activeSource ? (
+                    <>
+                        {isGenerated && isPlaying ? (
+                            // SPRITE SHEET ANIMATION MODE
+                            <div className="w-full h-full overflow-hidden relative">
+                                <img 
+                                    src={activeSource} 
+                                    alt={name}
+                                    className="h-full max-w-none absolute top-0 left-0"
+                                    style={{ 
+                                        width: '400%', 
+                                        animation: 'sprite-slide 1.5s steps(4) infinite' 
+                                    }}
+                                />
+                                <style>{`
+                                    @keyframes sprite-slide {
+                                        0% { transform: translateX(0); }
+                                        100% { transform: translateX(-100%); }
+                                    }
+                                `}</style>
+                            </div>
+                        ) : (
+                            // STANDARD STATIC / GIF DISPLAY
+                            <>
+                                {/* Blurred Background Layer (Fill) */}
+                                <div className="absolute inset-0 z-0">
+                                    <img 
+                                        src={activeSource} 
+                                        alt="background"
+                                        className="w-full h-full object-cover blur-md opacity-30 scale-110" 
+                                    />
+                                </div>
+                                
+                                {/* Foreground Layer (Contain) */}
+                                <div className="absolute inset-0 z-10 flex items-center justify-center p-2">
+                                    <img 
+                                        src={activeSource} 
+                                        alt={name} 
+                                        className="max-h-full max-w-full object-contain drop-shadow-[0_0_10px_rgba(0,0,0,0.8)]"
+                                        onError={(e) => { 
+                                            e.currentTarget.style.display = 'none'; 
+                                            setImgError(true); 
+                                        }}
+                                    />
+                                </div>
+                            </>
+                        )}
+
+                        {/* PLAY/PAUSE TOGGLE FOR SPRITES */}
+                        {isGenerated && (
+                            <div className="absolute bottom-2 right-2 z-30 flex space-x-1">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setIsPlaying(!isPlaying); }}
+                                    className="bg-black/70 text-[9px] text-blue-400 border border-blue-500/50 px-2 py-1 uppercase font-bold hover:text-white"
+                                >
+                                    {isPlaying ? 'PAUSE' : 'PLAY'}
+                                </button>
+                                {/* REROLL BUTTON */}
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); handleGenerateBlueprint(); }}
+                                    disabled={generating}
+                                    className="bg-black/70 text-[9px] text-yellow-400 border border-yellow-500/50 px-2 py-1 uppercase font-bold hover:text-white"
+                                    title="Re-Generate Schematic"
+                                >
+                                    {generating ? '...' : '↺ RE-CALCULATE'}
+                                </button>
+                            </div>
+                        )}
+                    </>
                 ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-600 bg-black">
-                        <span className="text-2xl mb-2">⚡</span>
-                        <span className="text-xs uppercase font-mono tracking-widest">System Visualization</span>
+                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-600 bg-black relative p-4">
+                        {generating ? (
+                            <div className="flex flex-col items-center text-blue-400 animate-pulse">
+                                <span className="text-2xl mb-2">⚡</span>
+                                <span className="text-xs font-mono uppercase">CONSTRUCTING SCHEMATIC...</span>
+                            </div>
+                        ) : (
+                            <div className="flex flex-col items-center space-y-4 w-full">
+                                <div className="text-center">
+                                    <span className="text-2xl mb-1 text-gray-700 block">NO DATA</span>
+                                    <button 
+                                        onClick={handleGenerateBlueprint}
+                                        className="mt-2 px-4 py-2 border border-blue-500/50 bg-blue-900/20 text-blue-400 text-[10px] font-bold uppercase hover:bg-blue-900/40 hover:text-white transition-all shadow-[0_0_15px_rgba(37,99,235,0.2)]"
+                                    >
+                                        MATERIALIZE SCHEMATIC
+                                    </button>
+                                </div>
+                                
+                                {/* STRATEGY HINT */}
+                                <div className="w-full border border-yellow-600/30 bg-yellow-900/10 p-2 rounded flex items-start space-x-2">
+                                    <span className="text-yellow-500 text-lg">ⓘ</span>
+                                    <p className="text-[9px] text-gray-400 text-left leading-relaxed">
+                                        <span className="text-yellow-500 font-bold uppercase">Strategy:</span> Materialize a schematic using System Construction. If the result is corrupted or unclear, engage 'Override' mode (Edit Icon) to manually link a visual from the network.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {/* Grid Background */}
+                        <div className="absolute inset-0 pointer-events-none opacity-20" style={{ backgroundImage: 'linear-gradient(#3b82f6 1px, transparent 1px), linear-gradient(90deg, #3b82f6 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
                     </div>
                 )}
                 
                 {/* Hologram Overlay */}
-                <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(0,255,255,0.03),rgba(0,0,0,0),rgba(0,255,255,0.03))] z-10 bg-[length:100%_2px,100%_100%]"></div>
+                <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(0,255,255,0.03),rgba(0,0,0,0),rgba(0,255,255,0.03))] z-20 bg-[length:100%_2px,100%_100%]"></div>
                 
                 {/* Scanner Line */}
-                <div className="absolute top-0 left-0 w-full h-1 bg-blue-400/30 blur-sm animate-[pulse_3s_infinite] shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
+                <div className="absolute top-0 left-0 w-full h-1 bg-blue-400/30 blur-sm animate-[pulse_3s_infinite] shadow-[0_0_10px_rgba(59,130,246,0.5)] z-20"></div>
             </div>
 
             <div>

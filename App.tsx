@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { PlayerStats, DailyQuest, ViewState, QuestTask, Hunter, Dungeon, Item, Rarity } from './types';
+import { PlayerStats, DailyQuest, ViewState, QuestTask, Hunter, Dungeon, Item, Rarity, Exercise } from './types';
 import { INITIAL_STATS, INITIAL_DAILY_QUEST, REST_DAY_TASKS, SYSTEM_DATABASE, SHADOW_ARMY, INITIAL_HUNTERS, STARTING_CLASSES, PATROL_MISSIONS, JOB_CHANGE_QUEST, STORY_CAMPAIGN, WORLD_BOSS, MASTERY_THRESHOLDS } from './constants';
 import { StatusView } from './components/StatusView';
 import { QuestView } from './components/QuestView';
@@ -16,10 +16,12 @@ import { Navigation } from './components/Navigation';
 import { AuthScreen } from './components/AuthScreen';
 import { VictoryScreen } from './components/VictoryScreen';
 import { SystemTicker } from './components/SystemTicker';
+import { ActiveExerciseModal } from './components/ActiveExerciseModal';
+import { ReawakeningScreen } from './components/ReawakeningScreen';
 import { generatePersonalizedWorkout } from './services/geminiService';
 import { playSystemSound, speakSystemMessage, initAudio } from './services/audioService';
 import { fetchDailySteps } from './services/googleFitService';
-import { db, isFirebaseConfigured, subscribeToGlobalVisuals, saveGlobalVisual } from './services/firebase';
+import { db, isFirebaseConfigured } from './services/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const LevelUpParticles = () => {
@@ -71,9 +73,12 @@ const App: React.FC = () => {
   const [isShopOpen, setIsShopOpen] = useState(false);
   const [isDungeonOpen, setIsDungeonOpen] = useState(false);
   const [isHunterCardOpen, setIsHunterCardOpen] = useState(false); 
+  const [isReawakening, setIsReawakening] = useState(false);
+  const [showPrestigeConfirm, setShowPrestigeConfirm] = useState(false); // New explicit modal state
   
+  // Initialize with INITIAL_HUNTERS instead of empty array
   const [stats, setStats] = useState<PlayerStats>(INITIAL_STATS);
-  const [hunters, setHunters] = useState<Hunter[]>([]);
+  const [hunters, setHunters] = useState<Hunter[]>(INITIAL_HUNTERS);
   const [dailyQuest, setDailyQuest] = useState<DailyQuest>(INITIAL_DAILY_QUEST);
   const [specialQuest, setSpecialQuest] = useState<DailyQuest | null>(null);
   
@@ -81,8 +86,9 @@ const App: React.FC = () => {
   const [shadowStatus, setShadowStatus] = useState<Record<string, any>>({});
   const [bossState, setBossState] = useState(WORLD_BOSS);
   
-  // Global Visuals State (Shared across users)
-  const [globalVisuals, setGlobalVisuals] = useState<Record<string, string>>({});
+  // Active Exercise Modal State
+  const [activeExercise, setActiveExercise] = useState<QuestTask | null>(null);
+  const [raidMode, setRaidMode] = useState(false); // Flag if workout is for Raid
 
   const [isQuestStarted, setIsQuestStarted] = useState(false);
   const [victoryState, setVictoryState] = useState<{ xp: number, gold: number, item?: string, shadow?: string, isLevelUp?: boolean, grade?: string } | null>(null);
@@ -104,12 +110,30 @@ const App: React.FC = () => {
   // Debounce ref for saving
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Initialize Global Visuals Subscription
+  // --- MULTIVERSE MIGRATION CHECK ---
   useEffect(() => {
-      const unsub = subscribeToGlobalVisuals((data) => {
-          setGlobalVisuals(data);
-      });
-      return () => unsub();
+      // Logic to inject new characters into old save files
+      const storedHunters = localStorage.getItem('leveling_hunters');
+      if (storedHunters) {
+          try {
+              const currentList = JSON.parse(storedHunters) as Hunter[];
+              const missingLegends = INITIAL_HUNTERS.filter(
+                  initH => !currentList.some(currH => currH.id === initH.id)
+              );
+
+              if (missingLegends.length > 0) {
+                  console.log("Injecting missing legends:", missingLegends);
+                  const mergedList = [...currentList, ...missingLegends];
+                  setHunters(mergedList);
+                  localStorage.setItem('leveling_hunters', JSON.stringify(mergedList));
+              } else {
+                  setHunters(currentList);
+              }
+          } catch (e) {
+              console.error("Error migrating hunters", e);
+              setHunters(INITIAL_HUNTERS);
+          }
+      }
   }, []);
 
   // PWA Install Prompt Listener
@@ -197,6 +221,19 @@ const App: React.FC = () => {
       };
   }, []);
 
+  // --- SIMULATION LOOPS ---
+  // Boss Passive Damage (NPCs fighting)
+  useEffect(() => {
+      const interval = setInterval(() => {
+          setBossState(prev => {
+              if (prev.currentHp <= 0) return prev;
+              const dmg = Math.floor(Math.random() * 500) + 100; // Small tick damage
+              return { ...prev, currentHp: Math.max(0, prev.currentHp - dmg) };
+          });
+      }, 5000);
+      return () => clearInterval(interval);
+  }, []);
+
   // --- LEADERBOARD & RIVAL SIMULATION ---
   const updateHunters = (playerLevel: number) => {
       setHunters(prevHunters => {
@@ -257,10 +294,24 @@ const App: React.FC = () => {
   };
 
   const handlePrestige = () => {
-      if (stats.level < 100) return;
-      if (!confirm("WARNING: REAWAKENING WILL RESET YOUR LEVEL. DO YOU PROCEED?")) return;
+      if (stats.level < 100) {
+          playSystemSound('glitch');
+          setNotificationMsg("Level 100 Required to break the limit.");
+          setShowNotification(true);
+          setTimeout(() => setShowNotification(false), 3000);
+          return;
+      }
+      playSystemSound('click');
+      setShowPrestigeConfirm(true); // Trigger custom modal
+  };
 
-      playSystemSound('levelUp');
+  const confirmReawakening = () => {
+      playSystemSound('start');
+      setShowPrestigeConfirm(false);
+      setIsReawakening(true);
+  };
+
+  const finalizeReawakening = () => {
       setStats(prev => ({
           ...prev,
           level: 1,
@@ -273,8 +324,9 @@ const App: React.FC = () => {
           unspentPoints: 0,
           xp: 0,
           maxXp: 100,
-          storyLog: [] // Reset story on prestige? Or keep it? Let's reset for New Game+ feel
+          storyLog: [] // Reset story on prestige for New Game+ feel
       }));
+      setIsReawakening(false);
       setNotificationMsg("SYSTEM REBOOT: REAWAKENING COMPLETE.");
       setShowNotification(true);
       setTimeout(() => setShowNotification(false), 5000);
@@ -323,8 +375,7 @@ const App: React.FC = () => {
                       target: scaledTarget,
                       current: 0,
                       unit: ex.defaultUnit || 'reps',
-                      exerciseId: ex.id,
-                      videoUrl: ex.videoUrl
+                      exerciseId: ex.id
                   };
               })
           };
@@ -385,8 +436,8 @@ const App: React.FC = () => {
                   difficulty: "S",
                   type: "emergency",
                   tasks: [
-                      { id: 'e1', name: 'BURPEES', target: 20, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Burpee.gif' },
-                      { id: 'e2', name: 'MOUNTAIN CLIMBERS', target: 40, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Mountain-Climber.gif' }
+                      { id: 'e1', name: 'BURPEES', target: 20, current: 0, unit: 'reps' },
+                      { id: 'e2', name: 'MOUNTAIN CLIMBERS', target: 40, current: 0, unit: 'reps' }
                   ]
               }));
           }, 3000);
@@ -489,9 +540,9 @@ const App: React.FC = () => {
                 status: 'active',
                 type: "emergency",
                 tasks: [
-                    { id: 'break_1', name: 'BURPEES', target: 30, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Burpee.gif' },
-                    { id: 'break_2', name: 'MOUNTAIN CLIMBERS', target: 50, current: 0, unit: 'reps', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Mountain-Climber.gif' },
-                    { id: 'break_3', name: 'PLANK', target: 90, current: 0, unit: 'sec', videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Plank.gif' }
+                    { id: 'break_1', name: 'BURPEES', target: 30, current: 0, unit: 'reps' },
+                    { id: 'break_2', name: 'MOUNTAIN CLIMBERS', target: 50, current: 0, unit: 'reps' },
+                    { id: 'break_3', name: 'PLANK', target: 90, current: 0, unit: 'sec' }
                 ]
             }));
             setIsQuestStarted(true); 
@@ -660,7 +711,9 @@ const App: React.FC = () => {
       setTimeout(() => setShowNotification(false), 3000);
   };
 
+  // --- RAID MECHANICS ---
   const handleRaidAttack = (damage: number) => {
+      // Legacy handler, now unused but kept for compatibility just in case
       const { xpMult } = getShadowMultipliers(stats);
       setStats(prev => ({
           ...prev,
@@ -671,6 +724,19 @@ const App: React.FC = () => {
           ...prev,
           currentHp: Math.max(0, prev.currentHp - damage)
       }));
+  };
+
+  const handleSelectRaidAction = (exercise: Exercise) => {
+      playSystemSound('click');
+      setRaidMode(true);
+      setActiveExercise({
+          id: `raid_${Date.now()}`,
+          name: exercise.name,
+          target: 20, // Default batch
+          current: 0,
+          unit: exercise.defaultUnit || 'reps',
+          exerciseId: exercise.id
+      });
   };
 
   const handleAddItem = (item: Item) => {
@@ -719,30 +785,25 @@ const App: React.FC = () => {
       }
   };
 
-  const handleUpdateCustomVisual = async (name: string, url: string) => {
-      // Saves to the GLOBAL database so it persists across users (brothers)
-      try {
-          await saveGlobalVisual(name, url);
-          setNotificationMsg("Global System Override Applied.");
-          setShowNotification(true);
-          setTimeout(() => setShowNotification(false), 3000);
-      } catch (e) {
-          console.error("Failed to save global visual", e);
-          setNotificationMsg("Connection Failed. Saving Locally.");
-          setShowNotification(true);
-          
-          // Fallback to local save
-          setStats(prev => ({
-              ...prev,
-              customVisuals: {
-                  ...(prev.customVisuals || {}),
-                  [name]: url
-              }
-          }));
-      }
+  const handleUpdateCustomVisual = (name: string, url: string) => {
+      setStats(prev => ({
+          ...prev,
+          customVisuals: {
+              ...(prev.customVisuals || {}),
+              [name]: url
+          }
+      }));
   };
 
   const handleUpdateTask = (taskId: string, newValue: number, isSpecial: boolean = false) => {
+    // --- RAID LOGIC ---
+    if (raidMode && activeExercise) {
+        // Calculate Damage from this batch
+        const reps = newValue; // The modal passes total current, but logic handles increment
+        // Reset raid mode done in handleFinishExercise
+        return;
+    }
+
     const currentQuest = isSpecial ? specialQuest : dailyQuest;
     const task = currentQuest?.tasks.find(t => t.id === taskId);
     const delta = task ? Math.max(0, newValue - task.current) : 0;
@@ -963,6 +1024,33 @@ const App: React.FC = () => {
     }
   };
 
+  const handleActiveExerciseUpdate = (newVal: number) => {
+      if (raidMode) {
+          // Calculate Damage
+          const damage = newVal * (stats.strength * 2 + 10);
+          setBossState(prev => ({
+              ...prev,
+              currentHp: Math.max(0, prev.currentHp - damage)
+          }));
+          setStats(prev => ({
+              ...prev,
+              gold: prev.gold + Math.floor(damage * 0.1), // Reward
+              xp: prev.xp + Math.floor(damage * 0.05)
+          }));
+          setRaidMode(false);
+          setActiveExercise(null);
+          setNotificationMsg(`DEALT ${damage} DAMAGE!`);
+          setShowNotification(true);
+          setTimeout(() => setShowNotification(false), 3000);
+      } else {
+          // Normal Quest Update
+          if (activeExercise) {
+              const isSpecial = !!specialQuest;
+              handleUpdateTask(activeExercise.id, newVal, isSpecial);
+          }
+      }
+  };
+
   const handleRegenerateQuest = async (isEmergency: boolean = false) => {
     // === SINGLE DAILY QUEST LOGIC ===
     if (!isEmergency) {
@@ -1132,6 +1220,45 @@ const App: React.FC = () => {
       return <AuthScreen onLogin={handleAuthLogin} storedName={lastUser} />;
   }
 
+  // --- MODALS LAYER ---
+
+  if (isReawakening) {
+      return <ReawakeningScreen onComplete={finalizeReawakening} prestigeLevel={stats.prestigeLevel} />;
+  }
+
+  // Explicit Prestige Confirmation Modal
+  if (showPrestigeConfirm) {
+      return (
+          <div className="fixed inset-0 z-[250] bg-black/90 flex items-center justify-center p-6 animate-in zoom-in duration-300">
+              <div className="bg-[#050b14] border-2 border-yellow-500 max-w-sm w-full p-6 text-center shadow-[0_0_50px_rgba(234,179,8,0.4)]">
+                  <h2 className="text-3xl font-black text-yellow-500 uppercase mb-4 tracking-tighter">FINAL WARNING</h2>
+                  <p className="text-gray-300 text-sm mb-6 leading-relaxed">
+                      Reawakening will <b>RESET YOUR LEVEL TO 1</b> and strip your current stats. 
+                      <br/><br/>
+                      You will retain:
+                      <br/>- Items & Shadows
+                      <br/>- Memories (History)
+                      <br/>- Prestige Rank (Bonus Stat Multiplier)
+                  </p>
+                  <div className="flex space-x-3">
+                      <button 
+                        onClick={() => setShowPrestigeConfirm(false)}
+                        className="flex-1 py-3 border border-gray-600 text-gray-400 hover:text-white uppercase font-bold text-xs"
+                      >
+                          Cancel
+                      </button>
+                      <button 
+                        onClick={confirmReawakening}
+                        className="flex-1 py-3 bg-yellow-600 text-black uppercase font-bold text-xs hover:bg-yellow-500 tracking-widest shadow-[0_0_15px_rgba(234,179,8,0.5)]"
+                      >
+                          CONFIRM RESET
+                      </button>
+                  </div>
+              </div>
+          </div>
+      );
+  }
+
   if (victoryState) {
       return <VictoryScreen rewards={victoryState} onClose={handleVictoryClose} isLevelUp={victoryState.isLevelUp} />;
   }
@@ -1213,24 +1340,7 @@ const App: React.FC = () => {
             dailySteps={dailySteps}
         />;
       case ViewState.GRIMOIRE:
-        return <GrimoireView 
-            history={stats.history} 
-            shadows={stats.shadows} 
-            shadowStatus={shadowStatus} 
-            gallery={stats.gallery} 
-            skillMastery={stats.skillMastery} 
-            onDispatch={handleDispatchShadow} 
-            onClaim={handleClaimShadow} 
-            onAddPhoto={handleAddPhoto} 
-            playerStats={effectiveStats} 
-            onUpdateVisual={handleUpdateCustomVisual} // Now calls global update
-            // Pass global visuals down to merge with UI
-            // However, we passed the handler to update them. 
-            // We should also pass the data so GrimoireView can display it.
-            // (We'll update GrimoireView prop signature in next step)
-            // @ts-ignore - Temporary ignore until next file update
-            globalVisuals={globalVisuals} 
-        />;
+        return <GrimoireView history={stats.history} shadows={stats.shadows} shadowStatus={shadowStatus} gallery={stats.gallery} skillMastery={stats.skillMastery} onDispatch={handleDispatchShadow} onClaim={handleClaimShadow} onAddPhoto={handleAddPhoto} playerStats={effectiveStats} onUpdateVisual={handleUpdateCustomVisual} />;
       case ViewState.LEADERBOARD:
         return <LeaderboardView hunters={hunters} playerStats={stats} playerName={playerName} onAddRival={handleAddRival} onExtractShadow={handleExtractShadow} />;
       case ViewState.PENALTY:
@@ -1238,7 +1348,7 @@ const App: React.FC = () => {
       case ViewState.STORY:
          return <StoryView stats={effectiveStats} onStartChapter={handleStartStoryChapter} />;
       case ViewState.RAID:
-         return <WorldBossView stats={effectiveStats} boss={bossState} onAttack={handleRaidAttack} />;
+         return <WorldBossView stats={effectiveStats} boss={bossState} onAttack={handleRaidAttack} onSelectCombatMove={handleSelectRaidAction} />;
       default:
         return <QuestView 
             quest={dailyQuest} 
@@ -1275,6 +1385,18 @@ const App: React.FC = () => {
             {renderView()}
         </div>
       </main>
+      
+      {activeExercise && (
+          <ActiveExerciseModal 
+            task={activeExercise} 
+            stats={effectiveStats}
+            onUpdate={handleActiveExerciseUpdate} 
+            onClose={() => { setActiveExercise(null); setRaidMode(false); }}
+            isDungeon={!!specialQuest && specialQuest.type === 'dungeon'}
+            bossName={specialQuest?.bossName}
+          />
+      )}
+
       {!penaltyMessage && <Navigation currentView={currentView} onNavigate={handleNavigate} playerLevel={stats.level} />}
     </div>
   );

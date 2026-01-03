@@ -99,7 +99,7 @@ export const LeaderboardView: React.FC<LeaderboardViewProps> = ({
         {activeTab === 'RANKING' && (
             <>
                 <SystemLayout className="flex-1 overflow-hidden flex flex-col">
-                    <div className="overflow-y-auto scrollbar-hide flex-1">
+                    <div className="overflow-y-auto scrollbar-hide flex-1 min-h-0">
                         <table className="w-full text-left border-collapse">
                             <thead>
                                 <tr className="border-b border-gray-700 text-gray-500 text-xs uppercase sticky top-0 bg-[#050b14] z-10">

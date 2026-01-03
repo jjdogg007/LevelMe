@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PlayerStats, Achievement, Item } from '../types';
 import { ACHIEVEMENTS, SHOP_ITEMS } from '../constants';
 import { SystemLayout } from './SystemLayout';
-import { playSystemSound } from '../services/audioService';
+import { playSystemSound, setSystemMute, getSystemMute } from '../services/audioService';
 import { signInToGoogleFit, fetchDailySteps } from '../services/googleFitService';
 
 interface StatusViewProps {
@@ -261,6 +261,7 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
   const [connectedWearable, setConnectedWearable] = useState(false);
   const [dailySteps, setDailySteps] = useState(0);
   const [showStatHelp, setShowStatHelp] = useState(false);
+  const [muted, setMuted] = useState(getSystemMute());
   
   // Settings: API Key Management
   const [apiKey, setApiKey] = useState("");
@@ -269,6 +270,8 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
   // Local state for complex inputs (Height)
   const [heightFt, setHeightFt] = useState("5");
   const [heightIn, setHeightIn] = useState("9");
+  
+  const restoreFileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
       const storedKey = localStorage.getItem('leveling_api_key');
@@ -310,6 +313,70 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
       } catch (e) {
           console.error(e);
           alert("System Error: Google Fit unavailable.");
+      }
+  };
+
+  const toggleMute = () => {
+      const newState = !muted;
+      setMuted(newState);
+      setSystemMute(newState);
+      if (!newState) playSystemSound('click');
+  };
+
+  const handleExport = () => {
+      playSystemSound('click');
+      const data = {
+          stats: JSON.parse(localStorage.getItem('leveling_player_stats') || '{}'),
+          name: localStorage.getItem('leveling_player_name'),
+          hunters: JSON.parse(localStorage.getItem('leveling_hunters') || '[]'),
+          quests: JSON.parse(localStorage.getItem('leveling_quest_started') || 'false'),
+          timestamp: new Date().toISOString()
+      };
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `SYSTEM_BACKUP_${new Date().toISOString().split('T')[0]}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+  };
+
+  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+
+      if (!window.confirm("WARNING: Overwriting System Memory. This cannot be undone. Proceed?")) {
+          event.target.value = ''; // Reset input
+          return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+          try {
+              const data = JSON.parse(ev.target?.result as string);
+              
+              if (data.stats) localStorage.setItem('leveling_player_stats', JSON.stringify(data.stats));
+              if (data.name) localStorage.setItem('leveling_player_name', data.name);
+              if (data.hunters) localStorage.setItem('leveling_hunters', JSON.stringify(data.hunters));
+              
+              playSystemSound('levelUp');
+              alert("Memory Core Integrated. System Rebooting...");
+              window.location.reload();
+          } catch(err) {
+              playSystemSound('glitch');
+              alert("Corrupted Data Core. Integration Failed.");
+          }
+      };
+      reader.readAsText(file);
+  };
+
+  const handleHardReset = () => {
+      playSystemSound('glitch');
+      const confirmation = prompt("DANGER: This will delete all progress permanently. Type 'DELETE' to confirm.");
+      if (confirmation === 'DELETE') {
+          localStorage.clear();
+          window.location.reload();
       }
   };
 
@@ -826,6 +893,19 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
           {activeTab === 'SETTINGS' && (
               <div className="space-y-4">
                   
+                  {/* SENSORY SETTINGS */}
+                  <SystemLayout title="Sensory Settings">
+                      <div className="p-2 flex items-center justify-between">
+                          <span className="text-xs text-gray-400 font-bold uppercase">System Audio</span>
+                          <button 
+                            onClick={toggleMute}
+                            className={`px-4 py-1 border rounded text-[10px] font-bold uppercase transition-all ${muted ? 'border-red-500 text-red-500' : 'bg-blue-600 border-blue-500 text-white'}`}
+                          >
+                              {muted ? 'MUTED' : 'ACTIVE'}
+                          </button>
+                      </div>
+                  </SystemLayout>
+
                   {/* API KEY SECTION (BYOK) */}
                   <SystemLayout title="API Configuration">
                       <div className="p-2 space-y-3">
@@ -855,6 +935,38 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
                           <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-[9px] text-gray-500 underline hover:text-white">
                               Get a free key here
                           </a>
+                      </div>
+                  </SystemLayout>
+
+                  {/* MEMORY ARCHIVES (BACKUP/RESTORE) */}
+                  <SystemLayout title="Memory Archives">
+                      <div className="p-2 space-y-3">
+                          <p className="text-[10px] text-gray-400 mb-2">Create a secure backup of your Hunter data or integrate a previous memory core.</p>
+                          
+                          <button 
+                            onClick={handleExport}
+                            className="w-full py-3 border border-blue-500/50 text-blue-400 text-xs font-bold uppercase tracking-widest hover:bg-blue-900/20 transition-all flex items-center justify-center space-x-2"
+                          >
+                              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                              <span>Initiate System Dump</span>
+                          </button>
+
+                          <div className="relative">
+                              <input 
+                                type="file" 
+                                ref={restoreFileRef}
+                                onChange={handleImport}
+                                accept=".json"
+                                className="hidden" 
+                              />
+                              <button 
+                                onClick={() => restoreFileRef.current?.click()}
+                                className="w-full py-3 border border-yellow-600/50 text-yellow-500 text-xs font-bold uppercase tracking-widest hover:bg-yellow-900/20 transition-all flex items-center justify-center space-x-2"
+                              >
+                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                  <span>Integrate Memory Core</span>
+                              </button>
+                          </div>
                       </div>
                   </SystemLayout>
 
@@ -912,7 +1024,7 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
                            )}
 
                            <div className="pt-4 border-t border-gray-800">
-                               <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="w-full py-3 border border-red-900 text-red-700 hover:bg-red-900/20 text-xs font-bold uppercase tracking-widest">
+                               <button onClick={handleHardReset} className="w-full py-3 border border-red-900 text-red-700 hover:bg-red-900/20 text-xs font-bold uppercase tracking-widest">
                                    Reset System Data
                                </button>
                            </div>

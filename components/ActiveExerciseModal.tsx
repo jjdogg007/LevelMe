@@ -25,6 +25,16 @@ export const ActiveExerciseModal: React.FC<ActiveExerciseModalProps> = ({ task, 
   const [musicEnabled, setMusicEnabled] = useState(false); // Music Toggle
   const voiceService = useRef<VoiceCommandService | null>(null);
 
+  // Vision State
+  const [visionEnabled, setVisionEnabled] = useState(false);
+  const [visionReady, setVisionReady] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const detectorRef = useRef<any>(null);
+  const rafId = useRef<number | null>(null);
+  const poseStateRef = useRef<'UP' | 'DOWN'>('UP');
+  const poseBaselineRef = useRef<number | null>(null); // Baseline Y coordinate (Shoulder/Nose)
+
   // Juice States
   const [isShaking, setIsShaking] = useState(false);
   const [floatingTexts, setFloatingTexts] = useState<{id: number, text: string, x: number, y: number, color: string, scale?: number}[]>([]);
@@ -63,6 +73,7 @@ export const ActiveExerciseModal: React.FC<ActiveExerciseModalProps> = ({ task, 
 
       return () => {
           if(voiceService.current) voiceService.current.stop();
+          if(rafId.current) cancelAnimationFrame(rafId.current);
           stopBattleMusic(); // Ensure music stops on unmount
       };
   }, [setSize, restTimeTotal]);
@@ -86,6 +97,175 @@ export const ActiveExerciseModal: React.FC<ActiveExerciseModalProps> = ({ task, 
           setMusicEnabled(true);
       }
   };
+
+  // --- VISION SYSTEM START ---
+  const startVisionSystem = async () => {
+      if (visionEnabled) {
+          // Turn off
+          setVisionEnabled(false);
+          setVisionReady(false);
+          if (rafId.current) cancelAnimationFrame(rafId.current);
+          if (videoRef.current && videoRef.current.srcObject) {
+              const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
+              tracks.forEach(track => track.stop());
+          }
+          return;
+      }
+
+      setVisionEnabled(true);
+      
+      try {
+          // Initialize Camera
+          const stream = await navigator.mediaDevices.getUserMedia({ 
+              video: { facingMode: 'user', width: 640, height: 480 } 
+          });
+          
+          if (videoRef.current) {
+              videoRef.current.srcObject = stream;
+              videoRef.current.onloadedmetadata = () => {
+                  videoRef.current?.play();
+                  
+                  // Initialize Model
+                  initializePoseModel();
+              };
+          }
+      } catch (err) {
+          console.error("Vision Error:", err);
+          alert("Optical Sensor Malfunction. Permission Denied or Hardware Unavailable.");
+          setVisionEnabled(false);
+      }
+  };
+
+  const initializePoseModel = async () => {
+      if (!(window as any).poseDetection || !(window as any).tf) {
+          alert("System modules (TensorFlow) not loaded.");
+          setVisionEnabled(false);
+          return;
+      }
+
+      try {
+          await (window as any).tf.setBackend('webgl');
+          const model = (window as any).poseDetection.SupportedModels.MoveNet;
+          const detectorConfig = { modelType: (window as any).poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING };
+          detectorRef.current = await (window as any).poseDetection.createDetector(model, detectorConfig);
+          
+          setVisionReady(true);
+          detectPoseLoop();
+      } catch (err) {
+          console.error("Model Load Error", err);
+          setVisionEnabled(false);
+      }
+  };
+
+  const detectPoseLoop = async () => {
+      if (!videoRef.current || !detectorRef.current || !canvasRef.current) return;
+
+      const poses = await detectorRef.current.estimatePoses(videoRef.current);
+      if (poses && poses.length > 0) {
+          const pose = poses[0];
+          drawPose(pose);
+          analyzePose(pose);
+      }
+
+      rafId.current = requestAnimationFrame(detectPoseLoop);
+  };
+
+  const drawPose = (pose: any) => {
+      const ctx = canvasRef.current?.getContext('2d');
+      if (!ctx || !videoRef.current) return;
+
+      ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+      
+      // Draw Skeleton
+      const keypoints = pose.keypoints;
+      
+      // Draw Points
+      keypoints.forEach((kp: any) => {
+          if (kp.score > 0.3) {
+              ctx.beginPath();
+              ctx.arc(kp.x, kp.y, 5, 0, 2 * Math.PI);
+              ctx.fillStyle = '#00ff00'; // Matrix Green
+              ctx.fill();
+          }
+      });
+
+      // Draw Lines (Simple skeleton)
+      const connections = [
+          ['nose', 'left_eye'], ['nose', 'right_eye'],
+          ['left_shoulder', 'right_shoulder'],
+          ['left_shoulder', 'left_elbow'], ['left_elbow', 'left_wrist'],
+          ['right_shoulder', 'right_elbow'], ['right_elbow', 'right_wrist'],
+          ['left_shoulder', 'left_hip'], ['right_shoulder', 'right_hip'],
+          ['left_hip', 'right_hip']
+      ];
+
+      ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)';
+      ctx.lineWidth = 2;
+
+      connections.forEach(([p1, p2]) => {
+          const kp1 = keypoints.find((k: any) => k.name === p1);
+          const kp2 = keypoints.find((k: any) => k.name === p2);
+          if (kp1 && kp2 && kp1.score > 0.3 && kp2.score > 0.3) {
+              ctx.beginPath();
+              ctx.moveTo(kp1.x, kp1.y);
+              ctx.lineTo(kp2.x, kp2.y);
+              ctx.stroke();
+          }
+      });
+  };
+
+  const analyzePose = (pose: any) => {
+      // Simplified "Vertical Cycle" Detection
+      // Works for Squats, Pushups, Situps (mostly) by tracking head/shoulder vertical movement
+      const nose = pose.keypoints.find((k: any) => k.name === 'nose');
+      const leftShoulder = pose.keypoints.find((k: any) => k.name === 'left_shoulder');
+      const rightShoulder = pose.keypoints.find((k: any) => k.name === 'right_shoulder');
+
+      if (!nose || nose.score < 0.4) return; // Lost tracking
+
+      // Average Y position of upper body
+      let currentY = nose.y;
+      if (leftShoulder && rightShoulder && leftShoulder.score > 0.4 && rightShoulder.score > 0.4) {
+          currentY = (nose.y + leftShoulder.y + rightShoulder.y) / 3;
+      }
+
+      // Initialize Baseline (Standing/Top position)
+      if (poseBaselineRef.current === null) {
+          poseBaselineRef.current = currentY;
+          return;
+      }
+
+      // Dynamic Baseline Drift (To adjust if user moves camera or changes position slightly)
+      // Slowly pull baseline towards current Y if we are in UP state
+      if (poseStateRef.current === 'UP') {
+          poseBaselineRef.current = (poseBaselineRef.current * 0.95) + (currentY * 0.05);
+      }
+
+      // Thresholds (pixels) - Scale dependent, but assuming standard webcam distance
+      const DOWN_THRESHOLD = 50; // Needs to go down at least this much pixels
+      
+      const diff = currentY - poseBaselineRef.current; // Positive = Down (Y increases downwards)
+
+      if (poseStateRef.current === 'UP') {
+          if (diff > DOWN_THRESHOLD) {
+              poseStateRef.current = 'DOWN';
+              // Visual Feedback
+              const ctx = canvasRef.current?.getContext('2d');
+              if (ctx) {
+                  ctx.fillStyle = "rgba(255, 0, 0, 0.3)";
+                  ctx.fillRect(0,0, ctx.canvas.width, ctx.canvas.height);
+              }
+          }
+      } else if (poseStateRef.current === 'DOWN') {
+          if (diff < (DOWN_THRESHOLD / 2)) {
+              // Returned close to baseline
+              poseStateRef.current = 'UP';
+              addReps(1); // Count Rep
+              playSystemSound('click');
+          }
+      }
+  };
+  // --- VISION SYSTEM END ---
 
   // Speech on Open
   useEffect(() => {
@@ -239,16 +419,36 @@ export const ActiveExerciseModal: React.FC<ActiveExerciseModalProps> = ({ task, 
             {isWorkout ? (
                 // WORKOUT HEADER
                 <>
-                    {/* Visualizer / Image */}
+                    {/* Visualizer / Image / Camera */}
                     <div className={`w-full h-full relative overflow-hidden transition-opacity duration-100 ${flashBoss ? 'opacity-50 bg-red-500' : ''}`}>
-                        {exerciseData?.gifData ? (
-                            <img src={`data:image/gif;base64,${exerciseData.gifData}`} className="w-full h-full object-cover opacity-60 grayscale brightness-125" />
-                        ) : exerciseData?.videoUrl && !imgError ? (
-                            <img src={exerciseData.videoUrl} onError={() => setImgError(true)} className="w-full h-full object-cover opacity-60 grayscale brightness-125" />
+                        
+                        {visionEnabled ? (
+                            <div className="w-full h-full bg-black relative">
+                                <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover opacity-50" playsInline muted autoPlay></video>
+                                <canvas ref={canvasRef} width="640" height="480" className="absolute inset-0 w-full h-full object-cover"></canvas>
+                                {!visionReady && (
+                                    <div className="absolute inset-0 flex items-center justify-center">
+                                        <p className="text-blue-400 font-mono animate-pulse">INITIALIZING OPTICAL SENSORS...</p>
+                                    </div>
+                                )}
+                                {/* HUD Overlay */}
+                                <div className="absolute bottom-2 left-2 text-[10px] text-green-500 font-mono bg-black/50 px-2 rounded border border-green-500/50">
+                                    <p>SYS.VIS: ONLINE</p>
+                                    <p>TARGETING: SKELETAL_MESH</p>
+                                </div>
+                            </div>
                         ) : (
-                            <SystemVisualizer type={exerciseData?.type} active={!restTimer} />
+                            // Standard Visuals
+                            exerciseData?.gifData ? (
+                                <img src={`data:image/gif;base64,${exerciseData.gifData}`} className="w-full h-full object-cover opacity-60 grayscale brightness-125" />
+                            ) : exerciseData?.videoUrl && !imgError ? (
+                                <img src={exerciseData.videoUrl} onError={() => setImgError(true)} className="w-full h-full object-cover opacity-60 grayscale brightness-125" />
+                            ) : (
+                                <SystemVisualizer type={exerciseData?.type} active={!restTimer} />
+                            )
                         )}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
+                        
+                        {!visionEnabled && <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>}
                     </div>
                 </>
             ) : (
@@ -281,6 +481,20 @@ export const ActiveExerciseModal: React.FC<ActiveExerciseModalProps> = ({ task, 
                 </div>
                 
                 <div className="flex space-x-2">
+                    {/* Vision Toggle */}
+                    {isWorkout && (
+                        <button 
+                            onClick={startVisionSystem}
+                            className={`p-3 rounded-full border ${visionEnabled ? 'bg-green-600 border-green-500 text-black' : 'bg-gray-800 border-gray-600 text-white'}`}
+                            title="Activate System Vision"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                            </svg>
+                        </button>
+                    )}
+
                     {/* Music Toggle */}
                     <button 
                         onClick={toggleMusic}

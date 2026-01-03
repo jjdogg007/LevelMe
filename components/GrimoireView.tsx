@@ -19,10 +19,9 @@ interface GrimoireViewProps {
     onAddPhoto?: (base64: string) => void;
     playerStats?: PlayerStats; 
     onUpdateVisual?: (name: string, url: string) => void; // New Prop
-    globalVisuals?: Record<string, string>; // New Shared Prop
 }
 
-export const GrimoireView: React.FC<GrimoireViewProps> = ({ history = [], shadows = [], shadowStatus = {}, gallery = [], skillMastery = {}, onDispatch, onClaim, onAddPhoto, playerStats, onUpdateVisual, globalVisuals = {} }) => {
+export const GrimoireView: React.FC<GrimoireViewProps> = ({ history = [], shadows = [], shadowStatus = {}, gallery = [], skillMastery = {}, onDispatch, onClaim, onAddPhoto, playerStats, onUpdateVisual }) => {
   const [activeTab, setActiveTab] = useState<'SKILLS' | 'HISTORY' | 'ARMY' | 'VESSEL' | 'INTAKE'>('SKILLS');
   const [filterType, setFilterType] = useState<string>('All');
   const [filterRank, setFilterRank] = useState<string>('All');
@@ -152,10 +151,10 @@ export const GrimoireView: React.FC<GrimoireViewProps> = ({ history = [], shadow
       }
 
       return (
-          <div className="grid grid-cols-6 gap-2">
+          <div className="grid grid-cols-7 gap-2">
               {days.map((day, idx) => (
                   <div key={idx} className="flex flex-col items-center">
-                      <div className={`w-10 h-10 rounded border flex items-center justify-center font-mono text-xs transition-all
+                      <div className={`w-8 h-8 rounded border flex items-center justify-center font-mono text-[10px] transition-all
                         ${day.isCompleted 
                             ? 'bg-purple-600 border-purple-400 text-white shadow-[0_0_10px_rgba(147,51,234,0.6)]' 
                             : 'bg-black border-gray-800 text-gray-700'}
@@ -308,8 +307,7 @@ export const GrimoireView: React.FC<GrimoireViewProps> = ({ history = [], shadow
                     videoUrl: selectedExercise.videoUrl,
                     gifData: selectedExercise.gifData
                 }}
-                // Priority: Global Overrides > User Custom > Defaults
-                customVisual={globalVisuals[selectedExercise.name] || playerStats?.customVisuals?.[selectedExercise.name]}
+                customVisual={playerStats?.customVisuals?.[selectedExercise.name]}
                 onUpdateVisual={onUpdateVisual}
                 onClose={() => setSelectedExercise(null)}
             />
@@ -326,10 +324,9 @@ export const GrimoireView: React.FC<GrimoireViewProps> = ({ history = [], shadow
              </div>
         </div>
 
-        {/* --- INTAKE (FORMERLY NUTRITION) --- */}
+        {/* --- INTAKE (NUTRITION) --- */}
         {activeTab === 'INTAKE' && (
             <div className="flex-1 overflow-y-auto scrollbar-hide pb-20 space-y-4">
-                {/* ... (Existing Intake UI Code) ... */}
                 
                 {/* SCANNER */}
                 <div className="p-4 bg-gray-900/50 border border-green-900/50 rounded-sm">
@@ -454,6 +451,61 @@ export const GrimoireView: React.FC<GrimoireViewProps> = ({ history = [], shadow
             </div>
         )}
 
+        {/* --- HISTORY --- */}
+        {activeTab === 'HISTORY' && (
+            <div className="flex-1 overflow-y-auto scrollbar-hide pb-20 space-y-4">
+                <SystemLayout title="Monthly Streak">
+                    {renderCalendar()}
+                </SystemLayout>
+                
+                <SystemLayout title="Training Log">
+                    <div className="space-y-2">
+                        {history.length === 0 && <p className="text-gray-500 text-xs text-center py-4">No data recorded.</p>}
+                        {[...history].reverse().slice(0, 10).map((h, i) => (
+                            <div key={i} className="flex justify-between border-b border-gray-800 pb-2">
+                                <span className="text-white text-xs">{new Date(h).toLocaleDateString()}</span>
+                                <span className="text-blue-400 text-xs font-bold uppercase">Mission Complete</span>
+                            </div>
+                        ))}
+                    </div>
+                </SystemLayout>
+            </div>
+        )}
+
+        {/* --- ARMY --- */}
+        {activeTab === 'ARMY' && (
+            <div className="flex-1 overflow-y-auto scrollbar-hide pb-20 space-y-4">
+                <div className="flex justify-between items-center px-1">
+                    <h3 className="text-purple-400 font-bold uppercase text-sm">Shadow Soldiers</h3>
+                    <span className="text-xs text-gray-500">{shadows.length} Active</span>
+                </div>
+                {renderArmy()}
+            </div>
+        )}
+
+        {/* --- VESSEL --- */}
+        {activeTab === 'VESSEL' && (
+            <div className="flex-1 overflow-y-auto scrollbar-hide pb-20 space-y-4">
+                <div className="border-2 border-dashed border-gray-700 bg-gray-900/30 rounded-lg p-6 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-900/50 transition-colors" onClick={() => fileInputRef.current?.click()}>
+                    <span className="text-4xl mb-2">📸</span>
+                    <span className="text-blue-400 font-bold uppercase text-xs">Upload Physique Update</span>
+                    <span className="text-gray-600 text-[10px]">Track your physical transformation</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                    {gallery.map((item, i) => (
+                        <div key={i} className="aspect-[3/4] relative border border-gray-800 rounded overflow-hidden">
+                            <img src={item.image} className="w-full h-full object-cover" />
+                            <div className="absolute bottom-0 w-full bg-black/70 text-center py-1">
+                                <span className="text-[10px] text-white font-mono">{item.date}</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
+
+        {/* --- SKILLS --- */}
         {activeTab === 'SKILLS' && (
             <>
                 {/* Filters */}
@@ -498,9 +550,7 @@ export const GrimoireView: React.FC<GrimoireViewProps> = ({ history = [], shadow
                             const progress = mastery.rank === 'S' ? 100 : Math.min(100, (mastery.xp / target) * 100);
                             
                             const style = getRankStyle(mastery.rank);
-                            
-                            // Visual Priority: Global > Custom Local > Default Video > GIF Data > Fallback
-                            const customUrl = globalVisuals[ex.name] || playerStats?.customVisuals?.[ex.name];
+                            const customUrl = playerStats?.customVisuals?.[ex.name];
 
                             return (
                                 <div 

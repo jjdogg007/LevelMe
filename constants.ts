@@ -1,3 +1,4 @@
+
 import { DailyQuest, PlayerStats, PlayerClass, Exercise, Shadow, Hunter, Dungeon, Achievement, Item, StoryChapter, WorldBoss } from "./types";
 
 export const INITIAL_STATS: PlayerStats = {
@@ -110,7 +111,9 @@ export const NPC_ROSTER = [
     { name: "Thomas Andre", personality: "Boisterous, arrogant, respects power, physically massive" },
     { name: "Go Gun-Hee", personality: "Wise, old, supportive, authority figure" },
     { name: "Beru", personality: "Loyal to the Monarch, fierce, protective" },
-    { name: "Esil", personality: "Demon noble, curious, helpful guide" }
+    { name: "Rock Lee", personality: "Extremely energetic, obsessed with hard work and youth, physical taijutsu specialist" },
+    { name: "Monkey D. Luffy", personality: "Carefree, instinctual, obsessed with freedom and meat, incredibly strong will" },
+    { name: "Yusuke Urameshi", personality: "Cocky, delinquent attitude but good heart, utilizes spirit energy, likes a brawl" }
 ];
 
 export const SYSTEM_QUOTES = [
@@ -372,6 +375,9 @@ export const REST_DAY_QUEST: DailyQuest = {
 export const INITIAL_HUNTERS: Hunter[] = [
   { id: 'all_might', name: "All Might", level: 150, job: "Symbol of Peace" },
   { id: 'sj-woo', name: "Sung Jin-Woo", level: 140, job: "Shadow Monarch" },
+  { id: 'rock_lee', name: "Rock Lee", level: 95, job: "Green Beast" },
+  { id: 'luffy', name: "Monkey D. Luffy", level: 130, job: "Joy Boy" },
+  { id: 'yusuke', name: "Yusuke Urameshi", level: 115, job: "Spirit Detective" },
   { id: 't-andre', name: "Thomas Andre", level: 125, job: "Tanker" },
   { id: 'cha', name: "Cha Hae-In", level: 95, job: "Blade Dancer" },
   { id: 'rival', name: "Rival Hunter", level: 1, job: "Fighter", isRival: true }, 
@@ -381,7 +387,7 @@ export const INITIAL_HUNTERS: Hunter[] = [
 ];
 
 export const SYSTEM_DATABASE: Exercise[] = [
-    { id: 'arnold_press', name: 'ARNOLD PRESS', rank: 'C', type: 'Strength', description: "Rotational shoulder press targeting anterior, medial and posterior deltoids.", muscles: ['Shoulders', 'Triceps'], tips: [], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Arnold-Press.gif' },
+    { id: 'arnold_press', name: 'ARNOLD PRESS', rank: 'C', type: 'Strength', description: "Rotational shoulder press targeting anterior, medial and posterior deltoids.", muscles: ['Shoulders', 'Triceps'], tips: [], videoUrl: 'https://v5.airtableusercontent.com/v3/u/48/48/1767412800000/-G-hiMx1ZihBI_mzzXQEpQ/HxMIOtQZUYDOnfTtARVFqEeq4hVN7y4IdFCr1-6r;WqfMn-6OhBWjTrb25axQwiLBDfkLZ27IUsP91xDLc9OHmUpIfWEOk780cUcNXpC8ijk/ul4bzWaZ94-C3Gbz8tP0oXOoERAklLNXRCZ4cUquzEg' },
     { id: 'bicep_curl', name: 'BICEP CURL', rank: 'E', type: 'Strength', description: "Isolation exercise for the biceps brachii.", muscles: ['Biceps'], tips: ["Don't use momentum.", "Movement from elbow down."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Dumbbell-Curl.gif' },
     { id: 'bicycle_crunch', name: 'BICYCLE CRUNCH', rank: 'D', type: 'Strength', description: "Core rotational movement targeting abs and obliques.", muscles: ['Abs', 'Obliques'], tips: ["Lower leg = harder.", "Easier: Move slower.", "Harder: Keep shoulder blades off ground."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2021/02/Bicycle-Crunch.gif' },
     { id: 'bounds', name: 'BOUNDS', rank: 'C', type: 'Plyometrics', description: "Lateral explosive movement for power development.", muscles: ['Legs', 'Glutes'], tips: ["Do laps.", "Easier: Smaller jumps.", "Harder: Touch ground."], videoUrl: 'https://fitnessprogramer.com/wp-content/uploads/2022/07/Lateral-Bound.gif' },

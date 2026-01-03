@@ -92,6 +92,11 @@ export const fetchDailySteps = async (): Promise<number> => {
     const endOfDay = now.getTime();
 
     try {
+        // Avoid making the call if we know it will fail (Demo ID)
+        if (CLIENT_ID === 'YOUR_CLIENT_ID_HERE') {
+            throw new Error("Demo Mode: Google Fit API not configured.");
+        }
+
         const response = await (window as any).gapi.client.fitness.users.dataset.aggregate({
             userId: 'me',
             resource: {
@@ -111,8 +116,15 @@ export const fetchDailySteps = async (): Promise<number> => {
         const steps = point?.value?.[0]?.intVal || 0;
         
         return steps;
-    } catch (e) {
-        console.error("Error fetching steps:", e);
+    } catch (e: any) {
+        // Suppress console spam for expected demo failures
+        const msg = e?.result?.error?.message || e?.message || "Unknown error";
+        if (msg.includes("Demo Mode") || msg.includes("Bad Request")) {
+             console.debug("Google Fit Demo Fallback:", msg);
+        } else {
+             console.warn("Error fetching steps (Falling back to simulation):", msg);
+        }
+        
         // Simulate for demo if API fails/not configured
         return Math.floor(Math.random() * 5000) + 2000;
     }

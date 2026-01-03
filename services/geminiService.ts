@@ -1,3 +1,4 @@
+
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { NutritionPlan, PlayerStats, DailyQuest, Item, StoryLogEntry } from "../types";
 import { NPC_ROSTER } from "../constants";
@@ -486,6 +487,48 @@ export const generateItemImage = async (itemName: string, type: string, rarity: 
         return null;
     }
 };
+
+export const generateExerciseVisual = async (exerciseName: string, type: string): Promise<string | null> => {
+    const ai = getAI();
+    if (!ai) return null;
+
+    try {
+        const prompt = `
+            Create a "Sprite Sheet" schematic for the exercise: ${exerciseName}.
+            
+            CRITICAL INSTRUCTIONS:
+            1. Generate ONE single wide image containing exactly 4 panels arranged horizontally.
+            2. The 4 panels must show the exercise motion step-by-step: Start, Motion, Peak, End.
+            3. Style: Sci-Fi Holographic Wireframe Blueprint. Glowing Blue lines on Black background.
+            4. Each of the 4 figures must be evenly spaced.
+            5. No text, no grids, just the figure.
+            
+            This image will be used for a frame-by-frame animation loop.
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash-image',
+            contents: {
+                parts: [{ text: prompt }],
+            },
+            config: {
+                imageConfig: {
+                    aspectRatio: "16:9", // Wide enough for a strip
+                }
+            },
+        });
+
+        for (const part of response.candidates[0].content.parts) {
+            if (part.inlineData) {
+                return `data:image/png;base64,${part.inlineData.data}`;
+            }
+        }
+        return null;
+    } catch (error) {
+        console.error("Blueprint Gen Error:", error);
+        return null;
+    }
+}
 
 // --- CAMPAIGN GENERATOR ---
 export const generateCampaignChapter = async (stats: PlayerStats): Promise<StoryLogEntry | null> => {

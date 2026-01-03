@@ -7,6 +7,19 @@ let battleOscillators: OscillatorNode[] = [];
 let battleGains: GainNode[] = [];
 let battleInterval: any = null;
 
+// Mute State
+let isMuted = false;
+
+export const setSystemMute = (mute: boolean) => {
+    isMuted = mute;
+    if (isMuted) {
+        stopBattleMusic();
+        if (window.speechSynthesis) window.speechSynthesis.cancel();
+    }
+};
+
+export const getSystemMute = () => isMuted;
+
 // Initialize Audio Context (Mobile Fix)
 // Mobile browsers block audio until a user gesture. We call this on the first click.
 export const initAudio = () => {
@@ -25,6 +38,7 @@ export const initAudio = () => {
 
 // Text to Speech Function
 export const speakSystemMessage = (text: string) => {
+    if (isMuted) return;
     if (!window.speechSynthesis) return;
 
     // Cancel any current speech to prevent queue buildup
@@ -49,7 +63,7 @@ export const speakSystemMessage = (text: string) => {
 };
 
 const playTone = (freq: number, type: OscillatorType, duration: number, vol: number = 0.1) => {
-    if (!audioCtx) return;
+    if (isMuted || !audioCtx) return;
     
     // Ensure context is running (redundant safety)
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -72,7 +86,7 @@ const playTone = (freq: number, type: OscillatorType, duration: number, vol: num
 
 // --- BATTLE SOUNDTRACK (Procedural Drone) ---
 export const startBattleMusic = () => {
-    if (!audioCtx) return;
+    if (isMuted || !audioCtx) return;
     if (battleOscillators.length > 0) return; // Already playing
 
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -130,6 +144,8 @@ export const stopBattleMusic = () => {
 };
 
 export const playSystemSound = (type: 'hover' | 'click' | 'success' | 'levelUp' | 'glitch' | 'start') => {
+    if (isMuted) return;
+
     if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
         // Haptic Feedback
         switch (type) {

@@ -16,13 +16,13 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate,
       onNavigate(view);
   };
 
-  const NavButton = ({ view, icon, label, isActive }: { view: ViewState, icon: React.ReactNode, label: string, isActive?: boolean }) => {
+  const NavButton = ({ view, icon, label, isActive, className = "" }: { view: ViewState, icon: React.ReactNode, label: string, isActive?: boolean, className?: string }) => {
     const active = isActive || currentView === view;
     
     return (
         <button
         onClick={() => handleNav(view)}
-        className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-300 relative group min-w-[50px]
+        className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-300 relative group min-w-[50px] ${className}
             ${active ? 'text-blue-500' : 'text-gray-600 hover:text-gray-400'}
         `}
         >
@@ -66,31 +66,33 @@ export const Navigation: React.FC<NavigationProps> = ({ currentView, onNavigate,
       />
 
       {/* Story (Book) */}
-      <NavButton 
-        view={ViewState.STORY} 
+      <NavButton
+        view={ViewState.STORY}
         label="Story"
         icon={
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-               <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+                <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
+            </svg>
+        }
+      />
+
+      {/* Guild (Always Visible) */}
+      <NavButton 
+        view={ViewState.LEADERBOARD} 
+        label="Guild"
+        icon={
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
             </svg>
         } 
       />
 
-      {/* DYNAMIC SLOT: Guild (Leaderboard) < 15, Raid >= 15 */}
-      {playerLevel < 15 ? (
-          <NavButton 
-            view={ViewState.LEADERBOARD} 
-            label="Guild"
-            icon={
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-                </svg>
-            } 
-          />
-      ) : (
+      {/* Raid (High Level Only) */}
+      {playerLevel >= 15 && (
           <NavButton 
             view={ViewState.RAID} 
             label="Raid"
+            className="animate-pulse"
             icon={
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />

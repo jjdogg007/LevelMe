@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface SystemLayoutProps {
@@ -21,7 +22,7 @@ export const SystemLayout: React.FC<SystemLayoutProps> = ({ children, title, cla
         </div>
       )}
 
-      <div className="bg-[#050b14]/95 w-full h-full p-4 relative z-10 backdrop-blur-md">
+      <div className="bg-[#050b14]/95 w-full h-full p-4 relative z-10 backdrop-blur-md flex flex-col">
         {children}
       </div>
     </div>
