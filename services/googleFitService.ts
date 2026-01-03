@@ -96,8 +96,12 @@ export const signInToGoogleFit = async (): Promise<boolean> => {
 export const fetchDailySteps = async (): Promise<number> => {
     if (!gapiInited) {
         // Try passive init
-        await initializeGoogleFit();
-        if (!gapiInited) return 0;
+        try {
+            await initializeGoogleFit();
+        } catch (e) {
+            return -1;
+        }
+        if (!gapiInited) return -1;
     }
 
     // Start of today
@@ -129,10 +133,11 @@ export const fetchDailySteps = async (): Promise<number> => {
         // Suppress console spam for expected failures
         const msg = e?.result?.error?.message || e?.message || "Unknown error";
         if (msg.includes("401") || msg.includes("403")) {
-             // Not authorized yet, silent fail
+             // Not authorized yet, return -1 to indicate disconnection
+             return -1;
         } else {
              console.warn("Error fetching steps:", msg);
+             return -1;
         }
-        return 0;
     }
 };

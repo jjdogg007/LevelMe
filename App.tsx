@@ -385,9 +385,15 @@ const App: React.FC = () => {
   // Poll for Steps if Google Fit connected
   useEffect(() => {
       if (isLoggedIn) {
-          fetchDailySteps().then(steps => setDailySteps(steps));
+          // Initial check
+          fetchDailySteps().then(steps => {
+              if (steps !== -1) setDailySteps(steps);
+          });
+          
           const interval = setInterval(() => {
-              fetchDailySteps().then(steps => setDailySteps(steps));
+              fetchDailySteps().then(steps => {
+                  if (steps !== -1) setDailySteps(steps);
+              });
           }, 30000); // Check every 30s
           return () => clearInterval(interval);
       }

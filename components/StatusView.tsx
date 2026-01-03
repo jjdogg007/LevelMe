@@ -291,6 +291,21 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
       }
   }, []);
 
+  // AUTO-CHECK CONNECTION ON MOUNT
+  useEffect(() => {
+      const checkFitConnection = async () => {
+          const steps = await fetchDailySteps();
+          if (steps !== -1) {
+              setConnectedWearable(true);
+              setDailySteps(steps);
+          } else {
+              setConnectedWearable(false);
+          }
+      };
+      
+      checkFitConnection();
+  }, []);
+
   const handleSaveKey = () => {
       if (apiKey.trim()) {
           localStorage.setItem('leveling_api_key', apiKey.trim());
@@ -330,7 +345,7 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
               setConnectedWearable(true);
               playSystemSound('success');
               const steps = await fetchDailySteps();
-              setDailySteps(steps);
+              setDailySteps(Math.max(0, steps)); // Ensure no -1 displays
           } else {
               playSystemSound('glitch');
               alert("Connection Failed. 401 Error? Check the Origin helper below.");
@@ -347,6 +362,8 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
       setSystemMute(newState);
       if (!newState) playSystemSound('click');
   };
+
+  // ... (rest of methods unchanged: handleExport, handleImport, handleHardReset, handleEditClick, saveEdit, calculateBMI, handleUpgrade, getBadgeProgress, inventoryItems, getRarityStyle, TabButton, renderEditInput, copyOrigin)
 
   const handleExport = () => {
       playSystemSound('click');
@@ -409,7 +426,6 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
       setEditingField(field);
       
       if (field === 'height') {
-          // Parse "5' 9"" format
           const val = currentValue?.toString() || "";
           const parts = val.match(/(\d+)'\s*(\d+)"/);
           if (parts) {
@@ -420,7 +436,6 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
               setHeightIn("9");
           }
       } else if (field === 'weight') {
-          // Parse "165 lbs" -> "165"
           const val = currentValue?.toString() || "";
           setEditValue(val.replace(" lbs", "").replace("lbs", ""));
       } else {
@@ -448,23 +463,16 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
 
   const calculateBMI = () => {
       if (!stats.weight || !stats.height) return '-';
-      
-      // Parse Weight (lbs)
       const wMatch = stats.weight.match(/(\d+)/);
       const w = wMatch ? parseFloat(wMatch[0]) : 0;
-      
-      // Parse Height (ft in)
       const hMatch = stats.height.match(/(\d+)'\s*(\d+)"/);
       let hInches = 0;
       if (hMatch) {
           hInches = (parseInt(hMatch[1]) * 12) + parseInt(hMatch[2]);
       } else {
-          // Fallback if malformed
           return '-';
       }
-
       if (w > 0 && hInches > 0) {
-          // US BMI = 703 * (weight_lbs / height_inches^2)
           return ((w / (hInches * hInches)) * 703).toFixed(1);
       }
       return '-';
@@ -476,7 +484,6 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
       }
   };
 
-  // Helper for Badges Logic
   const getBadgeProgress = (ach: Achievement) => {
       let current = 0;
       switch(ach.metric) {
@@ -488,12 +495,8 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
       return { current, target: ach.target, percent: Math.min(100, (current / ach.target) * 100) };
   };
 
-  // Gear Logic
-  // Filter inventory for Shop Items.
-  // Note: Inventory stores string IDs.
   const inventoryItems = SHOP_ITEMS.filter(item => stats.inventory.includes(item.id));
 
-  // Styles based on rarity
   const getRarityStyle = (rarity: string = 'E') => {
       switch(rarity) {
           case 'S': return 'border-red-500 bg-red-950/20 shadow-[0_0_15px_rgba(239,68,68,0.5)]';
@@ -577,7 +580,6 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
               </div>
           );
       }
-      // Default Input
       return (
           <input 
             type={editingField === 'age' ? 'number' : 'text'} 
@@ -681,8 +683,7 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
       </div>
 
       <div className="flex-1 overflow-y-auto scrollbar-hide p-4 pb-20">
-          
-          {/* TAB: OVERVIEW */}
+          {/* TAB: OVERVIEW ... (unchanged) ... */}
           {activeTab === 'OVERVIEW' && (
               <div className="space-y-6">
                   {/* Share Card Action */}
@@ -842,7 +843,7 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
               </div>
           )}
 
-          {/* TAB: BADGES */}
+          {/* TAB: BADGES ... (unchanged) ... */}
           {activeTab === 'BADGES' && (
               <div>
                   <div className="flex justify-between items-center mb-4">
@@ -882,7 +883,7 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
               </div>
           )}
 
-          {/* TAB: HISTORY */}
+          {/* TAB: HISTORY ... (unchanged) ... */}
           {activeTab === 'HISTORY' && (
               <div>
                   <div className="mb-6">
@@ -1056,7 +1057,12 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
                                   </div>
                                   <div>
                                       <h4 className="font-bold text-white text-sm">Google Fit</h4>
-                                      <p className="text-[10px] text-gray-500">{connectedWearable ? `Steps: ${dailySteps}` : 'Sync Activity Data'}</p>
+                                      <p className="text-[10px] text-gray-500">
+                                          {connectedWearable 
+                                            ? <span className="text-green-400 font-bold">STATUS: ONLINE</span> 
+                                            : <span className="text-red-400 font-bold">STATUS: OFFLINE</span>}
+                                      </p>
+                                      {connectedWearable && <p className="text-[10px] text-gray-500">Steps: {dailySteps}</p>}
                                   </div>
                               </div>
                               <button 
@@ -1069,6 +1075,7 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
                       </div>
                   </SystemLayout>
 
+                  {/* Personal Data & Goals Sections (unchanged) ... */}
                   <SystemLayout title="Personal Data">
                       <div className="space-y-3">
                           <ProfileItem label="Avatar Form" value={stats.gender || 'Male'} onEdit={() => handleEditClick('gender', stats.gender)} />
