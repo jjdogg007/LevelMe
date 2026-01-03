@@ -266,6 +266,10 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
   // Settings: API Key Management
   const [apiKey, setApiKey] = useState("");
   const [hasCustomKey, setHasCustomKey] = useState(false);
+  
+  // Settings: Google Fit ID Management
+  const [googleClientId, setGoogleClientId] = useState("");
+  const [hasGoogleId, setHasGoogleId] = useState(false);
 
   // Local state for complex inputs (Height)
   const [heightFt, setHeightFt] = useState("5");
@@ -279,6 +283,12 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
           setHasCustomKey(true);
           setApiKey(storedKey);
       }
+      
+      const storedClientId = localStorage.getItem('leveling_google_client_id');
+      if (storedClientId) {
+          setHasGoogleId(true);
+          setGoogleClientId(storedClientId);
+      }
   }, []);
 
   const handleSaveKey = () => {
@@ -291,6 +301,19 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
           localStorage.removeItem('leveling_api_key');
           setHasCustomKey(false);
           alert("Key Removed. Reverting to default configuration.");
+      }
+  };
+
+  const handleSaveGoogleId = () => {
+      if (googleClientId.trim()) {
+          localStorage.setItem('leveling_google_client_id', googleClientId.trim());
+          setHasGoogleId(true);
+          playSystemSound('success');
+          alert("Client ID Saved. You may now attempt connection.");
+      } else {
+          localStorage.removeItem('leveling_google_client_id');
+          setHasGoogleId(false);
+          alert("Client ID Removed.");
       }
   };
 
@@ -308,7 +331,7 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
               setDailySteps(steps);
           } else {
               playSystemSound('glitch');
-              alert("Connection Failed. Check System Keys.");
+              alert("Connection Failed. Ensure the Client ID is correct and 'http://localhost:3000' (or your domain) is added to Authorized Origins in Google Cloud Console.");
           }
       } catch (e) {
           console.error(e);
@@ -906,7 +929,7 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
                       </div>
                   </SystemLayout>
 
-                  {/* API KEY SECTION (BYOK) */}
+                  {/* API KEY SECTION */}
                   <SystemLayout title="API Configuration">
                       <div className="p-2 space-y-3">
                           <p className="text-[10px] text-gray-400">
@@ -935,6 +958,35 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
                           <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="text-[9px] text-gray-500 underline hover:text-white">
                               Get a free key here
                           </a>
+                      </div>
+                  </SystemLayout>
+
+                  {/* GOOGLE FIT / CLIENT ID CONFIG */}
+                  <SystemLayout title="Google Fit Access">
+                      <div className="p-2 space-y-3">
+                          <p className="text-[10px] text-gray-400">
+                              To sync step data, provide a Google Cloud OAuth Client ID authorized for this domain.
+                          </p>
+                          <div className="flex items-center space-x-2">
+                              <input 
+                                type="text" 
+                                value={googleClientId} 
+                                onChange={(e) => setGoogleClientId(e.target.value)} 
+                                placeholder="Paste Client ID"
+                                className="flex-1 bg-black border border-gray-700 text-white px-3 py-2 text-xs focus:border-blue-500 focus:outline-none"
+                              />
+                              <button 
+                                onClick={handleSaveGoogleId}
+                                className="bg-blue-900/30 text-blue-400 border border-blue-500 px-4 py-2 text-xs font-bold uppercase hover:bg-blue-600 hover:text-white transition-all"
+                              >
+                                  Save
+                              </button>
+                          </div>
+                          {hasGoogleId && (
+                              <p className="text-[9px] text-green-500 uppercase font-bold tracking-widest">
+                                  ✓ Client ID Stored
+                              </p>
+                          )}
                       </div>
                   </SystemLayout>
 

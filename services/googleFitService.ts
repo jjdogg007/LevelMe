@@ -1,12 +1,18 @@
 
 // Service to handle Google Fit Integration
-// Note: In a real deployment, you must configure a Google Cloud Project and get a Client ID.
 
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || 'YOUR_CLIENT_ID_HERE'; 
+const DEFAULT_CLIENT_ID = '332875204396-vhlq34akasecslu6pi0luvi2sim74tsv.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/fitness.activity.read';
 
 let gapiInited = false;
 let tokenClient: any;
+
+const getClientId = () => {
+    if (typeof window !== 'undefined') {
+        return localStorage.getItem('leveling_google_client_id') || process.env.GOOGLE_CLIENT_ID || DEFAULT_CLIENT_ID;
+    }
+    return DEFAULT_CLIENT_ID;
+};
 
 export const loadGoogleScript = () => {
     return new Promise((resolve, reject) => {
@@ -29,17 +35,17 @@ export const loadGoogleScript = () => {
 export const initializeGoogleFit = async () => {
     try {
         await loadGoogleScript();
+        const clientId = getClientId();
         
         return new Promise((resolve, reject) => {
             (window as any).gapi.load('client', async () => {
                 try {
                     await (window as any).gapi.client.init({
-                        // apiKey: API_KEY, // Optional for this flow if using token model
                         discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/fitness/v1/rest'],
                     });
                     
                     tokenClient = (window as any).google.accounts.oauth2.initTokenClient({
-                        client_id: CLIENT_ID,
+                        client_id: clientId,
                         scope: SCOPES,
                         callback: '', // defined later
                     });
@@ -67,6 +73,7 @@ export const signInToGoogleFit = async (): Promise<boolean> => {
     return new Promise((resolve) => {
         tokenClient.callback = async (resp: any) => {
             if (resp.error) {
+                console.error("OAuth Error:", resp);
                 resolve(false);
                 return;
             }
@@ -84,7 +91,11 @@ export const signInToGoogleFit = async (): Promise<boolean> => {
 };
 
 export const fetchDailySteps = async (): Promise<number> => {
-    if (!gapiInited) return 0;
+    if (!gapiInited) {
+        // Try passive init
+        await initializeGoogleFit();
+        if (!gapiInited) return 0;
+    }
 
     // Start of today
     const now = new Date();
@@ -92,11 +103,6 @@ export const fetchDailySteps = async (): Promise<number> => {
     const endOfDay = now.getTime();
 
     try {
-        // Avoid making the call if we know it will fail (Demo ID)
-        if (CLIENT_ID === 'YOUR_CLIENT_ID_HERE') {
-            throw new Error("Demo Mode: Google Fit API not configured.");
-        }
-
         const response = await (window as any).gapi.client.fitness.users.dataset.aggregate({
             userId: 'me',
             resource: {
@@ -117,15 +123,13 @@ export const fetchDailySteps = async (): Promise<number> => {
         
         return steps;
     } catch (e: any) {
-        // Suppress console spam for expected demo failures
+        // Suppress console spam for expected failures
         const msg = e?.result?.error?.message || e?.message || "Unknown error";
-        if (msg.includes("Demo Mode") || msg.includes("Bad Request")) {
-             console.debug("Google Fit Demo Fallback:", msg);
+        if (msg.includes("401") || msg.includes("403")) {
+             // Not authorized yet, silent fail
         } else {
-             console.warn("Error fetching steps (Falling back to simulation):", msg);
+             console.warn("Error fetching steps:", msg);
         }
-        
-        // Simulate for demo if API fails/not configured
-        return Math.floor(Math.random() * 5000) + 2000;
+        return 0;
     }
 };
