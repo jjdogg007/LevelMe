@@ -613,12 +613,14 @@ const App: React.FC = () => {
                   // LOGIN FLOW: Fetch User
                   const docSnap = await getDoc(docRef);
                   
-                  if (!docSnap.exists()) return false; // User not found
-                  
-                  // Load fetched data
-                  const data = docSnap.data();
-                  initializePlayerState(data.stats, name);
-                  return true;
+                  if (docSnap.exists()) {
+                      // Found in Cloud, Load it
+                      const data = docSnap.data();
+                      initializePlayerState(data.stats, name);
+                      return true;
+                  }
+                  // If not found in cloud, do NOT return false yet. Fall through to local check.
+                  console.log("User not found in cloud, checking local storage...");
               }
           } catch (err) {
               console.error("Firebase Error:", err);
@@ -626,7 +628,7 @@ const App: React.FC = () => {
           }
       }
 
-      // 2. LocalStorage Fallback (Offline Mode)
+      // 2. LocalStorage Fallback (Offline Mode or Sync Fail)
       const savedName = localStorage.getItem('leveling_player_name');
       const savedStats = localStorage.getItem('leveling_player_stats');
 
