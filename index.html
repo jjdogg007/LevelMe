@@ -225,5 +225,14 @@
 </head>
   <body>
     <div id="root"></div>
+    
+    <!-- SYSTEM INITIALIZATION: PREVENT CRASH ON ENV VARS -->
+    <script>
+      // Shim process.env for browser environment to prevent white screen of death
+      window.process = window.process || { env: {} };
+    </script>
+
+    <!-- SYSTEM ENTRY POINT: LOAD THE APPLICATION -->
+    <script type="module" src="./index.tsx"></script>
   </body>
 </html>
