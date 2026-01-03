@@ -53,10 +53,10 @@ export const ReawakeningScreen: React.FC<ReawakeningScreenProps> = ({ onComplete
                     </div>
                     <h2 className="text-yellow-500 font-bold text-2xl uppercase tracking-widest glitch" data-text="DECONSTRUCTING">DECONSTRUCTING</h2>
                     <div className="text-left font-mono text-[10px] text-gray-500 space-y-1 w-64 mx-auto border-l border-yellow-900 pl-2">
-                        <p>> STR... RESET</p>
-                        <p>> AGI... RESET</p>
-                        <p>> VIT... RESET</p>
-                        <p>> MEMORY... PRESERVED</p>
+                        <p>&gt; STR... RESET</p>
+                        <p>&gt; AGI... RESET</p>
+                        <p>&gt; VIT... RESET</p>
+                        <p>&gt; MEMORY... PRESERVED</p>
                     </div>
                 </div>
             )}
