@@ -70,6 +70,9 @@ export const signInToGoogleFit = async (): Promise<boolean> => {
         if (!success) return false;
     }
 
+    console.log("System: Requesting Access for Origin:", window.location.origin);
+    console.log("System: Using Client ID:", getClientId());
+
     return new Promise((resolve) => {
         tokenClient.callback = async (resp: any) => {
             if (resp.error) {

@@ -309,11 +309,13 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
           localStorage.setItem('leveling_google_client_id', googleClientId.trim());
           setHasGoogleId(true);
           playSystemSound('success');
-          alert("Client ID Saved. You may now attempt connection.");
+          alert("Client ID Saved. System Reloading...");
+          window.location.reload(); // FORCE RELOAD TO PICK UP NEW ID
       } else {
           localStorage.removeItem('leveling_google_client_id');
           setHasGoogleId(false);
           alert("Client ID Removed.");
+          window.location.reload();
       }
   };
 
@@ -331,7 +333,7 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
               setDailySteps(steps);
           } else {
               playSystemSound('glitch');
-              alert("Connection Failed. Ensure the Client ID is correct and 'http://localhost:3000' (or your domain) is added to Authorized Origins in Google Cloud Console.");
+              alert("Connection Failed. 401 Error? Check the Origin helper below.");
           }
       } catch (e) {
           console.error(e);
@@ -585,6 +587,14 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
             autoFocus
           />
       );
+  };
+
+  const copyOrigin = () => {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      if (origin) {
+          navigator.clipboard.writeText(origin);
+          alert("Origin URL copied: " + origin);
+      }
   };
 
   return (
@@ -967,6 +977,21 @@ export const StatusView: React.FC<StatusViewProps> = ({ stats, onIncreaseStat, o
                           <p className="text-[10px] text-gray-400">
                               To sync step data, provide a Google Cloud OAuth Client ID authorized for this domain.
                           </p>
+                          
+                          {/* Origin Helper */}
+                          <div className="bg-gray-900 p-2 rounded border border-gray-800">
+                              <p className="text-[9px] text-gray-500 uppercase mb-1">Your Detected Origin</p>
+                              <div className="flex items-center space-x-2">
+                                  <code className="text-xs text-blue-400 select-all flex-1 p-1 bg-black border border-blue-900/30 rounded">
+                                      {typeof window !== 'undefined' ? window.location.origin : '...'}
+                                  </code>
+                                  <button onClick={copyOrigin} className="px-2 py-1 bg-blue-900/20 text-blue-400 border border-blue-500/50 text-[9px] uppercase font-bold hover:text-white">Copy</button>
+                              </div>
+                              <p className="text-[8px] text-gray-600 mt-2">
+                                  If seeing 'Error 401', add this EXACT URL to "Authorized JavaScript origins" in Google Cloud.
+                              </p>
+                          </div>
+
                           <div className="flex items-center space-x-2">
                               <input 
                                 type="text" 
